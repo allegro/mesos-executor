@@ -1,4 +1,6 @@
-# Mesos Executor
+# Mesos Executor 
+
+[![Build Status](https://travis-ci.org/allegro/mesos-executor.svg?branch=master)](https://travis-ci.org/allegro/mesos-executor)
 
 ![Executor](doc/img/executor-mesos.png)
 
