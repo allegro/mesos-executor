@@ -1,0 +1,126 @@
+# -*- mode: ansible -*-
+# vi: set ft=ansible :
+
+---
+- hosts: all
+  gather_facts: no
+
+  become: true
+  become_method: sudo
+  become_user: root
+
+  tasks:
+  - name: hack hostname
+    hostname:
+      name: localhost
+
+  - name: add mesosphere gpg key
+    apt_key:
+      keyserver: keyserver.ubuntu.com
+      id: E56151BF
+      state: present
+
+  - name: add mesosphere apt repo
+    apt_repository:
+      repo: deb http://repos.mesosphere.com/ubuntu trusty main
+      state: present
+
+  - name: add oracle java repo
+    apt_repository:
+      repo: ppa:webupd8team/java
+      state: present
+
+  - name: upgrade packages
+    apt: update-cache=yes upgrade=yes
+
+  - name: accept oracle license part 1
+    shell: echo "debconf shared/accepted-oracle-license-v1-1 select true" | debconf-set-selections
+
+  - name: accept oracle license part 2
+    shell: echo "debconf shared/accepted-oracle-license-v1-1 seen true" | debconf-set-selections
+
+  - name: install development dependencies
+    apt: name={{ item }} state=present force=true
+    with_items:
+      - marathon
+      - mesos
+      - nginx
+      - oracle-java8-installer
+      - oracle-java8-set-default
+      - supervisor
+
+  - name: configure mesos slave
+    copy:
+      src: executor_environment_variables
+      dest: /etc/mesos-slave/executor_environment_variables
+      owner: root
+      group: root
+      mode: 0644
+    register: mesos_slave_config
+
+  - name: reload mesos slave configuration
+    service:
+      name: mesos-slave
+      state: reloaded
+    when: mesos_slave_config.changed
+
+  - name: configure nginx site
+    copy:
+      src: default
+      dest: /etc/nginx/sites-available/default
+      owner: root
+      group: root
+      mode: 0644
+    register: nginx_config
+
+  - name: reload nginx configuration
+    service:
+      name: nginx
+      state: reloaded
+    when: nginx_config.changed
+
+  - name: enable and start marathon service
+    service:
+      name: marathon
+      enabled: yes
+      state: started
+
+  - name: enable and start mesos-master service
+    service:
+      name: mesos-master
+      enabled: yes
+      state: started
+
+  - name: enable and start mesos-slave service
+    service:
+      name: mesos-slave
+      enabled: yes
+      state: started
+
+  - name: enable and start nginx service
+    service:
+      name: nginx
+      enabled: yes
+      state: started
+
+  - name: download and install consul
+    unarchive:
+      src: https://releases.hashicorp.com/consul/0.7.5/consul_0.7.5_linux_amd64.zip
+      dest: /bin/
+      remote_src: yes
+
+  - name: supervise consul
+    template:
+      src: consul.j2
+      dest: /etc/supervisor/conf.d/consul.conf
+
+  - name: create consul log locations
+    file:
+      path: /var/log/consul
+      state: directory
+
+  - name: enable and start supervisor service
+    service:
+      name: supervisor
+      enabled: yes
+      state: started

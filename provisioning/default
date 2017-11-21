@@ -1,0 +1,5 @@
+server {
+  listen   80;
+  root /vagrant/target;
+  server_name localhost;
+}

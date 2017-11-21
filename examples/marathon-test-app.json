@@ -1,0 +1,51 @@
+{
+  "id": "/cool-test-python-1",
+  "cmd": "python -m SimpleHTTPServer $PORT0",
+  "cpus": 0.1,
+  "mem": 128,
+  "disk": 0,
+  "instances": 1,
+  "acceptedResourceRoles": [
+    "*"
+  ],
+  "env": {
+    "ALLEGRO_EXECUTOR_HTTP_TIMEOUT": "3s",
+    "ALLEGRO_EXECUTOR_DEBUG": "true"
+  },
+  "executor": "./executor",
+  "healthChecks": [
+    {
+      "gracePeriodSeconds": 300,
+      "intervalSeconds": 60,
+      "timeoutSeconds": 20,
+      "maxConsecutiveFailures": 3,
+      "portIndex": 0,
+      "path": "/",
+      "protocol": "HTTP",
+      "ignoreHttp1xx": false
+    }
+  ],
+  "labels": {
+    "artifactId": "cool-test-python",
+    "groupId": "com.example",
+    "version": "1.0.0",
+    "consul": "cool-test-python",
+    "vip": "cool-test-python",
+    "serviceId": "com.example.cool-test-python"
+  },
+  "portDefinitions": [
+    {
+      "port": 10000,
+      "protocol": "tcp",
+      "labels": {}
+    }
+  ],
+  "fetch": [
+    {
+      "uri": "http://localhost/executor",
+      "extract": true,
+      "executable": false,
+      "cache": false
+    }
+  ]
+}

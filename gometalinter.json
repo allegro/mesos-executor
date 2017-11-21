@@ -1,0 +1,21 @@
+{
+  "Aggregate": true,
+  "Concurrency": 2,
+  "Cyclo": 14,
+  "Deadline": "300s",
+  "DisableAll": true,
+  "Enable": [
+    "deadcode",
+    "errcheck",
+    "gocyclo",
+    "goimports",
+    "golint",
+    "gosimple",
+    "vet"
+  ],
+  "Exclude": [
+    ".*_string.go",
+    ".*_test.go"
+  ],
+  "Vendor": true
+}
