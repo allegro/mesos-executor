@@ -1,6 +1,7 @@
 # Mesos Executor 
 
 [![Build Status](https://travis-ci.org/allegro/mesos-executor.svg?branch=master)](https://travis-ci.org/allegro/mesos-executor)
+[![Coverage Status](https://coveralls.io/repos/github/allegro/mesos-executor/badge.svg?branch=master)](https://coveralls.io/github/allegro/mesos-executor?branch=master)
 
 ![Executor](doc/img/executor-mesos.png)
 
