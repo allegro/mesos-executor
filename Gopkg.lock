@@ -52,9 +52,9 @@
 
 [[projects]]
   name = "github.com/hashicorp/consul"
-  packages = ["api","testutil","testutil/retry"]
-  revision = "2c7715154d8d4568524b76d2d4deb7ca6fd1b285"
-  version = "v0.8.5"
+  packages = ["api","lib/freeport","testutil","testutil/retry"]
+  revision = "9564c2978b59c060aed0657e662a4eb1c6f35356"
+  version = "v1.0.1"
 
 [[projects]]
   branch = "master"
@@ -96,6 +96,12 @@
   name = "github.com/mitchellh/go-homedir"
   packages = ["."]
   revision = "b8bc1bf767474819792c23f32d8286a45736f1c6"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/mitchellh/go-testing-interface"
+  packages = ["."]
+  revision = "a61a99592b77c9ba629d254a693acffaeb4b7e28"
 
 [[projects]]
   name = "github.com/pborman/uuid"
@@ -171,6 +177,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d353e23ffafeff0dacc17ac225f91a0d15ffc5c33fcca37d14daf24360721c5b"
+  inputs-digest = "cd25292f835295dcd7cdcfae1c9ad3fc87084692846d774e9510e748abad0814"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -9,6 +9,9 @@ BUILD_FOLDER := target
 GO_BUILD := go build -v -ldflags "$(LDFLAGS)" -a
 GO_SRC := $(shell find . -name '*.go')
 
+CURRENT_DIR = $(shell pwd)
+PATH := $(CURRENT_DIR)/bin:$(PATH)
+
 .PHONY: clean test all build release deps lint lint-deps \
 		generate-source generate-source-deps
 
@@ -22,7 +25,7 @@ $(BUILD_FOLDER)/executor: $(GO_SRC)
 clean:
 	go clean -v .
 	rm -rf $(BUILD_FOLDER)
-	rm -rf .env
+	rm -rf $(CURRENT_DIR)/bin
 
 generate-source: generate-source-deps
 	go generate -v $$(go list ./... | grep -v /vendor/)
@@ -42,9 +45,6 @@ release: clean lint test build
 	chmod 0755 $(BUILD_FOLDER)/executor-linux-amd64.zip
 	chmod 0777 $(BUILD_FOLDER)
 
-.env:
-	echo "USER_ID=${USER_ID}" > .env
-
 test: $(BUILD_FOLDER)/test-results/report.xml
 
 $(BUILD_FOLDER)/test-results/report.xml: test-deps $(BUILD_FOLDER)/test-results $(GO_SRC)
@@ -55,7 +55,6 @@ $(BUILD_FOLDER)/test-results:
 	mkdir -p $(BUILD_FOLDER)/test-results
 
 test-deps:
+	./scripts/install-consul.sh
 	@which go-junit-report > /dev/null || \
 		(go get -u github.com/jstemmer/go-junit-report)
-	@which consul > /dev/null || \
-		(go get -u github.com/hashicorp/consul)
