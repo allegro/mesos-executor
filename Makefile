@@ -45,11 +45,15 @@ release: clean lint test build
 	chmod 0755 $(BUILD_FOLDER)/executor-linux-amd64.zip
 	chmod 0777 $(BUILD_FOLDER)
 
-test: $(BUILD_FOLDER)/test-results/report.xml
+test: $(BUILD_FOLDER)/test-results/report.xml $(BUILD_FOLDER)/test-results/coverage.out
 
 $(BUILD_FOLDER)/test-results/report.xml: test-deps $(BUILD_FOLDER)/test-results $(GO_SRC)
 	go test -cover -race -v -test.timeout 5m $$(go list ./... | grep -v /vendor/) | tee $(BUILD_FOLDER)/test-results/report.log
 	cat $(BUILD_FOLDER)/test-results/report.log | go-junit-report -set-exit-code > $(BUILD_FOLDER)/test-results/report.xml
+
+$(BUILD_FOLDER)/test-results/coverage.out:
+	go test -covermode=count -coverprofile=$(BUILD_FOLDER)/test-results/coverage.out -v
+	goveralls -coverprofile=$(BUILD_FOLDER)/test-results/coverage.out -service=travis-ci
 
 $(BUILD_FOLDER)/test-results:
 	mkdir -p $(BUILD_FOLDER)/test-results
@@ -58,3 +62,5 @@ test-deps:
 	./scripts/install-consul.sh
 	@which go-junit-report > /dev/null || \
 		(go get -u github.com/jstemmer/go-junit-report)
+	@which goveralls > /dev/null || \
+		(go get github.com/mattn/goveralls)
