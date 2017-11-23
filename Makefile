@@ -48,6 +48,8 @@ release: clean lint test build
 test: test-deps $(BUILD_FOLDER)/test-results $(GO_SRC)
 	go test -cover -race -v -test.timeout 5m -coverprofile=$(BUILD_FOLDER)/test-results/coverage.out | tee $(BUILD_FOLDER)/test-results/report.log
 	cat $(BUILD_FOLDER)/test-results/report.log | go-junit-report -set-exit-code > $(BUILD_FOLDER)/test-results/report.xml
+
+coveralls: test
 	goveralls -coverprofile=$(BUILD_FOLDER)/test-results/coverage.out -service=travis-ci
 
 $(BUILD_FOLDER)/test-results:
