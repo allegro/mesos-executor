@@ -285,7 +285,7 @@ func TestIfGeneratesCorrectNameIfConsulLabelEmpty(t *testing.T) {
 }
 
 func TestIfNoErrorOnUnsupportedEvent(t *testing.T) {
-	h, err := NewHook("")
+	h, err := NewHook(Config{})
 
 	require.NoError(t, err)
 

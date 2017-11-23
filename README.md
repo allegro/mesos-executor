@@ -115,7 +115,7 @@ Binary will be immediately available on virtual machine on following address:
 
 You can use above address to configure your Marathon application to be executed
 by your freshly build executor. An example application is available in
-[examples/marathon-test-app.json](marathon-test-app.json)
+[marathon-test-app.json](examples/marathon-test-app.json)
 
 Executor configuration can be altered via environment variables in the following way:
 ```

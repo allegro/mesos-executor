@@ -7,7 +7,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/hashicorp/consul/api"
-	mesos "github.com/mesos/mesos-go/api/v1/lib"
+	"github.com/mesos/mesos-go/api/v1/lib"
 
 	"github.com/allegro/mesos-executor/hook"
 	"github.com/allegro/mesos-executor/mesosutils"
@@ -146,7 +146,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesos.TaskInfo) error {
 func (h *Hook) DeregisterFromConsul(taskInfo mesos.TaskInfo) error {
 	agent := h.client.Agent()
 
-	ghostInstances := []instance{}
+	var ghostInstances []instance
 	for _, serviceData := range h.serviceInstances {
 		if err := agent.ServiceDeregister(serviceData.consulServiceID); err != nil {
 			// Consul will deregister ghost instances after some time
