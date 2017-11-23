@@ -58,7 +58,7 @@ implement `hook.Hook` and plug it into `hook.Manager`.
 
 Integration with [Consul][3] is based on a hook. It mimics the behavior of
 [allegro/marathon-consul][4].
-Task is registered in Conusl once it becomes healthy and deregistered before kill.
+Task is registered in Consul once it becomes healthy and deregistered before kill.
 Required task metadata such as name, labels and ports are obtained from task definition.
 Service name is taken from `consul` label.
 Labels are transformed to Consul tags only when value is equal `tag`. Client does not use any ACL Token by default,
