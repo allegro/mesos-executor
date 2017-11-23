@@ -37,6 +37,12 @@ type Hook struct {
 	serviceInstances []instance
 }
 
+// Config is Consul hook configuration settable from environment
+type Config struct {
+	// Consul ACL Token
+	ConsulToken string `default:"" envconfig:"consul_token"`
+}
+
 // HandleEvent calls appropriate hook functions that correspond to supported
 // event types. Unsupported events are ignored.
 func (h *Hook) HandleEvent(event hook.Event) error {
@@ -206,9 +212,9 @@ func generateURL(info *mesos.HealthCheck_HTTPCheckInfo, port int) string {
 }
 
 // NewHook creates new Consul hook that is responsible for graceful Consul deregistration.
-func NewHook(token string) (hook.Hook, error) {
+func NewHook(cfg Config) (hook.Hook, error) {
 	config := api.DefaultConfig()
-	config.Token = token
+	config.Token = cfg.ConsulToken
 	client, err := api.NewClient(config)
 	if err != nil {
 		return nil, err

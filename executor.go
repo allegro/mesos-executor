@@ -21,8 +21,6 @@ import (
 	"github.com/mesos/mesos-go/api/v1/lib/httpcli"
 
 	"github.com/allegro/mesos-executor/hook"
-	"github.com/allegro/mesos-executor/hook/consul"
-	"github.com/allegro/mesos-executor/hook/vaas"
 	"github.com/allegro/mesos-executor/mesosutils"
 	"github.com/allegro/mesos-executor/state"
 )
@@ -46,16 +44,6 @@ type Config struct {
 
 	// Mesos framework configuration
 	MesosConfig config.Config `ignore:"true"`
-
-	// Varnish as a Service API url
-	VaasAPIHost string `default:"" envconfig:"vaas_host"`
-	// Varnish as a Service username
-	VaasAPIUsername string `default:"" envconfig:"vaas_username"`
-	// Varnish as a Service access token
-	VaasAPIKey string `default:"" envconfig:"vaas_token"`
-
-	// Consul ACL Token
-	ConsulToken string `default:"" envconfig:"consul_token"`
 
 	// SentryDSN is an address used for sending logs to Sentry
 	SentryDSN string `split_words:"true"`
@@ -124,8 +112,8 @@ const (
 	Launch
 )
 
-// NewExecutor creates new instance of executor configured with by `cfg`.
-func NewExecutor(cfg Config) *Executor {
+// NewExecutor creates new instance of executor configured with by `cfg` with hooks
+func NewExecutor(cfg Config, hooks ...hook.Hook) *Executor {
 
 	log.Info("Initializing executor with following configuration:")
 	log.Infof("AgentEndpoint               = %s", cfg.MesosConfig.AgentEndpoint)
@@ -145,25 +133,11 @@ func NewExecutor(cfg Config) *Executor {
 		context:       ctx,
 		contextCancel: ctxCancel,
 		events:        make(chan Event),
-		hookManager:   newHookManager(cfg),
+		hookManager:   hook.Manager{hooks},
 		stateUpdater:  state.BufferedUpdater(cfg.MesosConfig, cfg.StateUpdateBufferSize),
 		clock:         systemClock{},
 		random:        newRandom(),
 	}
-}
-
-func newHookManager(config Config) hook.Manager {
-	vaasHook, err := vaas.NewHook(config.VaasAPIHost, config.VaasAPIUsername, config.VaasAPIKey)
-	if err != nil {
-		log.WithError(err).Fatalf("Error loading VaaS service hook %s", err)
-	}
-
-	consulHook, err := consul.NewHook(config.ConsulToken)
-	if err != nil {
-		log.WithError(err).Fatalf("Error loading Consul hook %s", err)
-	}
-
-	return hook.Manager{Hooks: []hook.Hook{vaasHook, consulHook}}
 }
 
 // Start registers executor in Mesos agent and waits for events from it.
