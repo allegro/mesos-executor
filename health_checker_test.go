@@ -277,7 +277,7 @@ func TestIfHTTPHealthCheckFailsWhenRequestIsInvalid(t *testing.T) {
 
 	err := httpHealthCheck(check)
 
-	assert.EqualError(t, err, "Health check error: recived status code 400, but expected codes between 200 and 399")
+	assert.EqualError(t, err, "Health check error: received status code 400, but expected codes between 200 and 399")
 }
 
 func TestIfHTTPHealthCheckFailsWhenServiceIsUnavailable(t *testing.T) {
@@ -289,7 +289,7 @@ func TestIfHTTPHealthCheckFailsWhenServiceIsUnavailable(t *testing.T) {
 
 	err := httpHealthCheck(check)
 
-	assert.EqualError(t, err, "Health check error: recived status code 503, but expected codes between 200 and 399")
+	assert.EqualError(t, err, "Health check error: received status code 503, but expected codes between 200 and 399")
 }
 
 func TestIfHTTPHealthCheckFailsWhenNoServiceIsListeningOnConfiguredPort(t *testing.T) {

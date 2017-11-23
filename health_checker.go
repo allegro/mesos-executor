@@ -193,7 +193,7 @@ func httpHealthCheck(checkDefinition mesos.HealthCheck) error {
 	// Default executors treat return codes between 200 and 399 as success
 	// See: https://github.com/apache/mesos/blob/1.1.3/include/mesos/mesos.proto#L355-L357
 	if response.StatusCode < 200 || response.StatusCode >= 400 {
-		return fmt.Errorf("Health check error: recived status code %d, but expected codes between 200 and 399", response.StatusCode)
+		return fmt.Errorf("Health check error: received status code %d, but expected codes between 200 and 399", response.StatusCode)
 	}
 
 	return nil

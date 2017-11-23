@@ -2,14 +2,13 @@ package consul
 
 import (
 	"fmt"
-	"testing"
 	"strconv"
+	"testing"
 
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/testutil"
 	mesos "github.com/mesos/mesos-go/api/v1/lib"
 	"github.com/stretchr/testify/require"
-
 
 	"github.com/allegro/mesos-executor/hook"
 )

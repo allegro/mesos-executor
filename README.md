@@ -1,6 +1,7 @@
 # Mesos Executor 
 
 [![Build Status](https://travis-ci.org/allegro/mesos-executor.svg?branch=master)](https://travis-ci.org/allegro/mesos-executor)
+[![Go Report Card](https://goreportcard.com/badge/github.com/allegro/mesos-executor)](https://goreportcard.com/report/github.com/allegro/mesos-executor)
 [![Coverage Status](https://coveralls.io/repos/github/allegro/mesos-executor/badge.svg?branch=master)](https://coveralls.io/github/allegro/mesos-executor?branch=master)
 [![GoDoc](https://godoc.org/github.com/allegro/mesos-executor?status.svg)](https://godoc.org/github.com/allegro/mesos-executor)
 
@@ -63,7 +64,6 @@ Required task metadata such as name, labels and ports are obtained from task def
 Service name is taken from `consul` label.
 Labels are transformed to Consul tags only when value is equal `tag`. Client does not use any ACL Token by default,
 this can be changed by setting `CONSUL_TOKEN` environment variable.
-Labels are transformed to Consul tags only when value is equal `tag`.
 
 ### VaaS integration
 
@@ -71,7 +71,7 @@ Labels are transformed to Consul tags only when value is equal `tag`.
 Task is registered once it becomes healthy and deregistered before kill.
 Task’s first port will be registered under director provided in a label named `director`.
 If task has defined weight in a label it will be used. Weight could be overridden
-with `VAAS_INITIAL_WEIGHT` Task environment.
+with `VAAS_INITIAL_WEIGHT` environment variable.
 If task is a canary instance (has non empty `canary` label) backend is marked
 as a canary.
 
@@ -99,7 +99,7 @@ $ vagrant up
 ```
 
 It will create a virtual machine with Apache Mesos and Marathon installed and
-runnning on it. Mesos UI will be available on http://localhost:5050 and Marathon
+running on it. Mesos UI will be available on http://localhost:5050 and Marathon
 UI on http://localhost:8080.
 
 If you want to test executor on Vagrant Mesos you will have to create release

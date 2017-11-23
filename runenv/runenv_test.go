@@ -68,7 +68,7 @@ func TestGetEnvVarIfSetReturnErrorIfVarDoesntExist(t *testing.T) {
 func TestGetEnvWithNoVariablesReturnsOsFqdnBasedEnv(t *testing.T) {
 	os.Clearenv()
 
-	getOsHostname = func () (string, error) { return "expected.hostname-prod.fqdn", nil }
+	getOsHostname = func() (string, error) { return "expected.hostname-prod.fqdn", nil }
 
 	env, err := Environment()
 
