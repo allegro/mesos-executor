@@ -31,6 +31,16 @@ type Hook struct {
 	client    Client
 }
 
+// Config is Varnish configuration settable from environment
+type Config struct {
+	// Varnish as a Service API url
+	VaasAPIHost string `default:"" envconfig:"vaas_host"`
+	// Varnish as a Service username
+	VaasAPIUsername string `default:"" envconfig:"vaas_username"`
+	// Varnish as a Service access token
+	VaasAPIKey string `default:"" envconfig:"vaas_token"`
+}
+
 // RegisterBackend adds new backend to VaaS if it does not exist.
 func (sh *Hook) RegisterBackend(taskInfo mesos.TaskInfo) error {
 	handyTaskInfo := mesosutils.TaskInfo{TaskInfo: taskInfo}
@@ -200,12 +210,12 @@ func (sh *Hook) HandleEvent(event hook.Event) error {
 }
 
 // NewHook returns new instance of Hook.
-func NewHook(apiHost string, apiUsername string, apiKey string) (*Hook, error) {
+func NewHook(cfg Config) (*Hook, error) {
 	return &Hook{
 		client: NewClient(
-			apiHost,
-			apiUsername,
-			apiKey,
+			cfg.VaasAPIHost,
+			cfg.VaasAPIUsername,
+			cfg.VaasAPIKey,
 		),
 	}, nil
 }

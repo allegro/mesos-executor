@@ -11,6 +11,9 @@ import (
 	"github.com/mesos/mesos-go/api/v1/lib/executor/config"
 
 	"github.com/allegro/mesos-executor"
+	"github.com/allegro/mesos-executor/hook"
+	"github.com/allegro/mesos-executor/hook/consul"
+	"github.com/allegro/mesos-executor/hook/vaas"
 	"github.com/allegro/mesos-executor/runenv"
 )
 
@@ -75,6 +78,28 @@ func initSentry(config executor.Config) error {
 	return nil
 }
 
+func createHooks() []hook.Hook {
+	var consulConfig consul.Config
+	if err := envconfig.Process(environmentPrefix, &consulConfig); err != nil {
+		log.WithError(err).Fatal("Failed to load Consul hook configuration")
+	}
+	consulHook, err := consul.NewHook(consulConfig)
+	if err != nil {
+		log.WithError(err).Fatalf("Error loading Consul hook %s", err)
+	}
+
+	var vaasConfig vaas.Config
+	if err := envconfig.Process(environmentPrefix, &vaasConfig); err != nil {
+		log.WithError(err).Fatal("Failed to load VaaS hook configuration")
+	}
+	vaasHook, err := vaas.NewHook(vaasConfig)
+	if err != nil {
+		log.WithError(err).Fatalf("Error loading VaaS service hook %s", err)
+	}
+
+	return []hook.Hook{consulHook, vaasHook}
+}
+
 func main() {
 	log.Infof("Allegro Mesos Executor (version: %s)", Version)
 	cfg, err := config.FromEnv()
@@ -82,7 +107,7 @@ func main() {
 		log.WithError(err).Fatal("Failed to load Mesos configuration")
 	}
 	Config.MesosConfig = cfg
-	exec := executor.NewExecutor(Config)
+	exec := executor.NewExecutor(Config, createHooks()...)
 	if err := exec.Start(); err != nil {
 		log.WithError(err).Fatal("Executor exited with error")
 	}
