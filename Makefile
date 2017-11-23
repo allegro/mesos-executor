@@ -8,6 +8,10 @@ BUILD_FOLDER := target
 
 GO_BUILD := go build -v -ldflags "$(LDFLAGS)" -a
 GO_SRC := $(shell find . -name '*.go')
+PACKAGES := $(shell go list ./... | grep -v /vendor/)
+
+TEST_TARGETS = $(PACKAGES)
+COVERAGEDIR := $(BUILD_FOLDER)/test-results
 
 CURRENT_DIR = $(shell pwd)
 PATH := $(CURRENT_DIR)/bin:$(PATH)
@@ -45,19 +49,23 @@ release: clean lint test build
 	chmod 0755 $(BUILD_FOLDER)/executor-linux-amd64.zip
 	chmod 0777 $(BUILD_FOLDER)
 
-test: test-deps $(BUILD_FOLDER)/test-results $(GO_SRC)
-	go test -cover -race -v -test.timeout 5m -coverprofile=$(BUILD_FOLDER)/test-results/coverage.out | tee $(BUILD_FOLDER)/test-results/report.log
-	cat $(BUILD_FOLDER)/test-results/report.log | go-junit-report -set-exit-code > $(BUILD_FOLDER)/test-results/report.xml
+test: $(COVERAGEDIR)/coverage.out
 
-coveralls: test
-	goveralls -coverprofile=$(BUILD_FOLDER)/test-results/coverage.out -service=travis-ci
+$(COVERAGEDIR)/coverage.out: test-deps $(COVERAGEDIR) $(GO_SRC) $(TEST_TARGETS)
+	gover $(COVERAGEDIR) $(COVERAGEDIR)/coverage.out
 
-$(BUILD_FOLDER)/test-results:
+$(TEST_TARGETS):
+	go test -coverprofile=$(COVERAGEDIR)/$(shell basename $@).coverprofile $(TESTARGS) $@
+
+coveralls: test $(COVERAGEDIR)/coverage.out
+	goveralls -coverprofile=$(COVERAGEDIR)/coverage.out -service=travis-ci
+
+$(COVERAGEDIR):
 	mkdir -p $(BUILD_FOLDER)/test-results
 
 test-deps:
 	./scripts/install-consul.sh
-	@which go-junit-report > /dev/null || \
-		(go get -u github.com/jstemmer/go-junit-report)
+	@which gover > /dev/null || \
+		(go get github.com/modocache/gover)
 	@which goveralls > /dev/null || \
 		(go get github.com/mattn/goveralls)
