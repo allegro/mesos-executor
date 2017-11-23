@@ -79,7 +79,7 @@ as a canary.
 
 To run executor tests locally you need following tools installed:
 
-* [Go 1.8+][6]
+* [Go 1.9+][6]
 * [Make][7]
 * Linux or Docker
 
