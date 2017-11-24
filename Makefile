@@ -44,7 +44,7 @@ lint-deps:
 	@which gometalinter.v1 > /dev/null || \
 		(go get gopkg.in/alecthomas/gometalinter.v1 && gometalinter.v1 --install)
 
-release: clean lint test build
+release: clean build
 	zip -j $(BUILD_FOLDER)/executor-linux-amd64.zip $(BUILD_FOLDER)/executor
 	chmod 0755 $(BUILD_FOLDER)/executor-linux-amd64.zip
 	chmod 0777 $(BUILD_FOLDER)
