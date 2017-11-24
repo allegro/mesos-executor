@@ -39,8 +39,6 @@ type Config struct {
 	StateUpdateBufferSize int `default:"1024" split_words:"true"`
 	// Timeout for attempts to send messages in buffer
 	StateUpdateWaitTimeout time.Duration `default:"5s" split_words:"true"`
-	// PkiIntegration enables integration with PKI :)
-	PkiIntegration bool `default:"false" split_words:"true"`
 
 	// Mesos framework configuration
 	MesosConfig config.Config `ignore:"true"`
@@ -125,7 +123,6 @@ func NewExecutor(cfg Config, hooks ...hook.Hook) *Executor {
 	log.Infof("RecoveryTimeout             = %s", cfg.MesosConfig.RecoveryTimeout)
 	log.Infof("SubscriptionBackoffMax      = %s", cfg.MesosConfig.SubscriptionBackoffMax)
 	log.Infof("APIPath                     = %s", cfg.APIPath)
-	log.Infof("PkiIntegration              = %t", cfg.PkiIntegration)
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	return &Executor{
