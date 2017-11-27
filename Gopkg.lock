@@ -21,6 +21,11 @@
   version = "2017.07.27"
 
 [[projects]]
+  name = "github.com/cyberdelia/go-metrics-graphite"
+  packages = ["."]
+  revision = "39f87cc3b432bbb898d7c643c0e93cac2bc865ad"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -128,6 +133,11 @@
   revision = "5333e98ee8b90e40336e56eb540641519813383b"
 
 [[projects]]
+  name = "github.com/rcrowley/go-metrics"
+  packages = ["."]
+  revision = "1f30fe9094a513ce4c700b9a54458bbb0c96996c"
+
+[[projects]]
   name = "github.com/shirou/gopsutil"
   packages = ["cpu","host","internal/common","mem","net","process"]
   revision = "114c78c777eb86b58e40910cbd3fc451829c366d"
@@ -177,6 +187,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "cd25292f835295dcd7cdcfae1c9ad3fc87084692846d774e9510e748abad0814"
+  inputs-digest = "71b8674e3764901a9df4ee2bec6d9bffa0fe1c5199486ceb4729153961d8f35d"
   solver-name = "gps-cdcl"
   solver-version = 1

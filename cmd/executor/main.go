@@ -14,6 +14,7 @@ import (
 	"github.com/allegro/mesos-executor/hook"
 	"github.com/allegro/mesos-executor/hook/consul"
 	"github.com/allegro/mesos-executor/hook/vaas"
+	_ "github.com/allegro/mesos-executor/metrics"
 	"github.com/allegro/mesos-executor/runenv"
 )
 

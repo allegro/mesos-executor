@@ -44,3 +44,11 @@
 [[constraint]]
   name = "gopkg.in/h2non/gentleman.v1"
   version = "1.0.3"
+
+[[constraint]]
+  name = "github.com/rcrowley/go-metrics"
+  revision = "1f30fe9094a513ce4c700b9a54458bbb0c96996c"
+
+[[constraint]]
+  name = "github.com/cyberdelia/go-metrics-graphite"
+  revision = "39f87cc3b432bbb898d7c643c0e93cac2bc865ad"
