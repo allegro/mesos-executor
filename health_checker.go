@@ -16,6 +16,7 @@ import (
 	mesos "github.com/mesos/mesos-go/api/v1/lib"
 
 	"github.com/allegro/mesos-executor/mesosutils"
+	"github.com/allegro/mesos-executor/runenv"
 )
 
 // Default for the http health check <host> part.
@@ -152,7 +153,7 @@ func commandHealthCheck(checkDefinition mesos.HealthCheck) error {
 
 func tcpHealthCheck(checkDefinition mesos.HealthCheck) error {
 	timeout := mesosutils.Duration(checkDefinition.GetTimeoutSeconds())
-	address := fmt.Sprintf("%s:%d", defaultDomain, checkDefinition.GetTCP().GetPort())
+	address := HealthCheckAddress(checkDefinition.GetTCP().GetPort())
 	conn, err := net.DialTimeout("tcp", address, timeout)
 	if err != nil {
 		return fmt.Errorf("TCP health error: %s", err)
@@ -172,7 +173,7 @@ func httpHealthCheck(checkDefinition mesos.HealthCheck) error {
 	}
 
 	var checkURL url.URL
-	checkURL.Host = fmt.Sprintf("%s:%d", defaultDomain, checkDefinition.GetHTTP().GetPort())
+	checkURL.Host = HealthCheckAddress(checkDefinition.GetHTTP().GetPort())
 	checkURL.Path = checkDefinition.GetHTTP().GetPath()
 	if checkDefinition.GetHTTP().Scheme != nil {
 		checkURL.Scheme = checkDefinition.GetHTTP().GetScheme()
@@ -197,4 +198,17 @@ func httpHealthCheck(checkDefinition mesos.HealthCheck) error {
 	}
 
 	return nil
+}
+
+// HealthCheckAddress returns host and port that should be used for health checking
+// service.
+func HealthCheckAddress(port uint32) string {
+	ip := runenv.IP()
+	var host string
+	if ip == nil {
+		host = defaultDomain
+	} else {
+		host = ip.String()
+	}
+	return fmt.Sprintf("%s:%d", host, port)
 }

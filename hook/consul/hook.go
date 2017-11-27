@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/consul/api"
 	"github.com/mesos/mesos-go/api/v1/lib"
 
+	executor "github.com/allegro/mesos-executor"
 	"github.com/allegro/mesos-executor/hook"
 	"github.com/allegro/mesos-executor/mesosutils"
 	"github.com/allegro/mesos-executor/runenv"
@@ -19,7 +20,6 @@ const (
 	// See: https://github.com/allegro/marathon-consul/blob/v1.1.0/apps/app.go#L10-L11
 	consulNameLabelKey = "consul"
 	consulTagValue     = "tag"
-	serviceHost        = "127.0.0.1"
 )
 
 // instance represents a service in consul
@@ -189,8 +189,7 @@ func generateHealthCheck(mesosCheck *mesos.HealthCheck, port int) *api.AgentServ
 
 		return &check
 	} else if mesosCheck.GetTCP() != nil {
-		check.TCP = fmt.Sprintf("%s:%d", serviceHost, port)
-
+		check.TCP = executor.HealthCheckAddress(uint32(port))
 		return &check
 	}
 
@@ -201,7 +200,7 @@ func generateURL(info *mesos.HealthCheck_HTTPCheckInfo, port int) string {
 	const defaultHTTPScheme = "http"
 
 	var checkURL url.URL
-	checkURL.Host = fmt.Sprintf("%s:%d", serviceHost, port)
+	checkURL.Host = executor.HealthCheckAddress(uint32(port))
 	checkURL.Path = info.GetPath()
 	if info.GetScheme() != "" {
 		checkURL.Scheme = info.GetScheme()

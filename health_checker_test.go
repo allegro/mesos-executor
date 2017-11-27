@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -298,6 +299,20 @@ func TestIfHTTPHealthCheckFailsWhenNoServiceIsListeningOnConfiguredPort(t *testi
 	err := httpHealthCheck(check)
 
 	assert.Error(t, err)
+}
+
+func TestIfUsesPublicIPForHealthCheckAddress(t *testing.T) {
+	os.Setenv("CLOUD_PUBLIC_IP", "6.6.6.6")
+	defer os.Unsetenv("CLOUD_PUBLIC_IP")
+
+	address := HealthCheckAddress(1234)
+
+	assert.Equal(t, "6.6.6.6:1234", address)
+}
+
+func TestIfFallbacksToLoopbackIfUnableToDeterminePublicIP(t *testing.T) {
+	address := HealthCheckAddress(1234)
+	assert.Equal(t, "127.0.0.1:1234", address)
 }
 
 func buildHTTPCheck(scheme string, port uint32, path string, timeoutSeconds float64) mesos.HealthCheck {
