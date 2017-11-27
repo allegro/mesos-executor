@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/allegro/mesos-executor/runenv"
+	"github.com/allegro/mesos-executor/mesosutils"
 )
 
 type MockClient struct {
@@ -61,14 +62,14 @@ func (m *MockClient) TaskStatus(task *Task) error {
 	return args.Error(0)
 }
 
-func prepareTaskInfo() mesos.TaskInfo {
+func prepareTaskInfo() mesosutils.TaskInfo {
 	ports := mesos.Ports{Ports: []mesos.Port{{Number: uint32(8080)}}}
 	discovery := mesos.DiscoveryInfo{Ports: &ports}
 
-	return mesos.TaskInfo{Discovery: &discovery}
+	return mesosutils.TaskInfo{mesos.TaskInfo{Discovery: &discovery}}
 }
 
-func prepareTaskInfoWithDirector(directorName string, extraLabels ...mesos.Label) (taskInfo mesos.TaskInfo) {
+func prepareTaskInfoWithDirector(directorName string, extraLabels ...mesos.Label) (taskInfo mesosutils.TaskInfo) {
 	taskInfo = prepareTaskInfo()
 	tag := "tag"
 	directorLabel := mesos.Label{Key: "director", Value: &directorName}
@@ -76,9 +77,9 @@ func prepareTaskInfoWithDirector(directorName string, extraLabels ...mesos.Label
 	labelList := []mesos.Label{directorLabel, weightLabel}
 	labelList = append(labelList, extraLabels...)
 	labels := mesos.Labels{Labels: labelList}
-	taskInfo.Labels = &labels
+	taskInfo.TaskInfo.Labels = &labels
 
-	taskInfo.Command = &mesos.CommandInfo{}
+	taskInfo.TaskInfo.Command = &mesos.CommandInfo{}
 
 	return taskInfo
 }
@@ -140,7 +141,7 @@ func TestIfWeightIsOverriddenByEnvironmentVariable(t *testing.T) {
 	serviceHook := Hook{client: mockClient}
 
 	taskInfo := prepareTaskInfoWithDirector("abc456")
-	taskInfo.Command.Environment = &mesos.Environment{
+	taskInfo.TaskInfo.Command.Environment = &mesos.Environment{
 		Variables: []mesos.Environment_Variable{{"VAAS_INITIAL_WEIGHT", "15"}},
 	}
 

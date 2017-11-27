@@ -7,12 +7,12 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/hashicorp/consul/api"
-	"github.com/mesos/mesos-go/api/v1/lib"
 
 	executor "github.com/allegro/mesos-executor"
 	"github.com/allegro/mesos-executor/hook"
 	"github.com/allegro/mesos-executor/mesosutils"
 	"github.com/allegro/mesos-executor/runenv"
+	"github.com/mesos/mesos-go/api/v1/lib"
 )
 
 const (
@@ -20,6 +20,7 @@ const (
 	// See: https://github.com/allegro/marathon-consul/blob/v1.1.0/apps/app.go#L10-L11
 	consulNameLabelKey = "consul"
 	consulTagValue     = "tag"
+	serviceHost        = "127.0.0.1"
 )
 
 // instance represents a service in consul
@@ -58,29 +59,28 @@ func (h *Hook) HandleEvent(event hook.Event) error {
 }
 
 // RegisterIntoConsul generates an id and sends service information to Consul Agent
-func (h *Hook) RegisterIntoConsul(taskInfo mesos.TaskInfo) error {
-	task := mesosutils.TaskInfo{TaskInfo: taskInfo}
-	consulLabel := task.FindLabel(consulNameLabelKey)
+func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
+	consulLabel := taskInfo.FindLabel(consulNameLabelKey)
 
 	if consulLabel == nil {
 		log.Infof("Label %q not found - not registering in Consul", consulNameLabelKey)
 		return nil
 	}
 
-	serviceName := task.GetLabelValue(consulNameLabelKey)
+	serviceName := taskInfo.GetLabelValue(consulNameLabelKey)
 	taskID := taskInfo.GetTaskID()
 	if serviceName == "true" || serviceName == "" {
 		// Sanitize taskID for use as a Consul service name. Marathon uses the following patterns for taskId:
 		// https://github.com/mesosphere/marathon/blob/v1.5.1.2/src/main/scala/mesosphere/marathon/state/PathId.scala#L109-L116
-		serviceName = marathonAppNameToServiceName(taskID.Value)
+		serviceName = marathonAppNameToServiceName(taskID)
 		log.Warnf(
 			"Warning! Invalid Consul service name provided for app! Will use default app name %s instead",
 			serviceName,
 		)
 	}
 
-	ports := task.GetPorts()
-	globalTags := task.GetLabelKeysByValue(consulTagValue)
+	ports := taskInfo.GetPorts()
+	globalTags := taskInfo.GetLabelKeysByValue(consulTagValue)
 
 	var instancesToRegister []instance
 	for _, port := range ports {
@@ -92,7 +92,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesos.TaskInfo) error {
 		// consulServiceID is generated the same way as it is in marathon-consul - because
 		// it registers the service
 		// See: https://github.com/allegro/marathon-consul/blob/v1.1.0/consul/consul.go#L299-L301
-		consulServiceID := fmt.Sprintf("%s_%s_%d", taskID.GetValue(), portServiceName, port.GetNumber())
+		consulServiceID := fmt.Sprintf("%s_%s_%d", taskID, portServiceName, port.GetNumber())
 		portTags := mesosutils.GetLabelKeysByValue(port.GetLabels().GetLabels(), consulTagValue)
 		portTags = append(portTags, globalTags...)
 		log.Infof("Adding service ID %q to deregister before termination", consulServiceID)
@@ -105,7 +105,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesos.TaskInfo) error {
 	}
 
 	if len(instancesToRegister) == 0 {
-		serviceID := fmt.Sprintf("%s_%s_%d", taskID.GetValue(), serviceName, ports[0].GetNumber())
+		serviceID := fmt.Sprintf("%s_%s_%d", taskID, serviceName, ports[0].GetNumber())
 		instancesToRegister = []instance{
 			{
 				consulServiceName: serviceName,
@@ -126,7 +126,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesos.TaskInfo) error {
 			Address:           runenv.IP().String(),
 			EnableTagOverride: false,
 			Checks:            api.AgentServiceChecks{},
-			Check:             generateHealthCheck(taskInfo.HealthCheck, int(serviceData.port)),
+			Check:             generateHealthCheck(taskInfo.GetHealthCheck(), int(serviceData.port)),
 		}
 
 		if err := agent.ServiceRegister(&serviceRegistration); err != nil {
@@ -143,7 +143,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesos.TaskInfo) error {
 
 // DeregisterFromConsul will deregister service IDs from Consul that were created
 // during AfterTaskStartEvent hook event.
-func (h *Hook) DeregisterFromConsul(taskInfo mesos.TaskInfo) error {
+func (h *Hook) DeregisterFromConsul(taskInfo mesosutils.TaskInfo) error {
 	agent := h.client.Agent()
 
 	var ghostInstances []instance
@@ -168,10 +168,10 @@ func getServiceLabel(port mesos.Port) (string, error) {
 	return label.GetValue(), nil
 }
 
-func marathonAppNameToServiceName(name string) string {
+func marathonAppNameToServiceName(name mesosutils.TaskID) string {
 	var sanitizer = strings.NewReplacer("_", ".", "/", "-")
 	// Remove all spaces and initial slashes, replace above characters
-	var sanitizedName = sanitizer.Replace(strings.Trim(strings.TrimSpace(name), "/"))
+	var sanitizedName = sanitizer.Replace(strings.Trim(strings.TrimSpace(string(name)), "/"))
 	if strings.Contains(sanitizedName, ".") {
 		var parts = strings.Split(sanitizedName, ".")
 		return strings.Join(parts[0:len(parts)-1], ".")
@@ -179,34 +179,25 @@ func marathonAppNameToServiceName(name string) string {
 	return sanitizedName
 }
 
-func generateHealthCheck(mesosCheck *mesos.HealthCheck, port int) *api.AgentServiceCheck {
+func generateHealthCheck(mesosCheck mesosutils.HealthCheck, port int) *api.AgentServiceCheck {
 	check := api.AgentServiceCheck{}
-	check.Interval = mesosutils.Duration(mesosCheck.GetIntervalSeconds()).String()
-	check.Timeout = mesosutils.Duration(mesosCheck.GetTimeoutSeconds()).String()
+	check.Interval = mesosCheck.Interval.String()
+	check.Timeout = mesosCheck.Timeout.String()
 
-	if mesosCheck.GetHTTP() != nil {
-		check.HTTP = generateURL(mesosCheck.HTTP, port)
-
-		return &check
-	} else if mesosCheck.GetTCP() != nil {
-		check.TCP = executor.HealthCheckAddress(uint32(port))
-		return &check
+	switch mesosCheck.Type {
+	case mesosutils.HTTP:
+		check.HTTP = generateURL(mesosCheck.HTTP.Path, port)
+	case mesosutils.TCP:
+		check.TCP = fmt.Sprintf("%s:%d", serviceHost, port)
 	}
-
 	return nil
 }
 
-func generateURL(info *mesos.HealthCheck_HTTPCheckInfo, port int) string {
-	const defaultHTTPScheme = "http"
-
+func generateURL(path string, port int) string {
 	var checkURL url.URL
 	checkURL.Host = executor.HealthCheckAddress(uint32(port))
-	checkURL.Path = info.GetPath()
-	if info.GetScheme() != "" {
-		checkURL.Scheme = info.GetScheme()
-	} else {
-		checkURL.Scheme = defaultHTTPScheme
-	}
+	checkURL.Path = path
+
 	return checkURL.String()
 }
 

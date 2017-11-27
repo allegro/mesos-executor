@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/allegro/mesos-executor/hook"
+	"github.com/allegro/mesos-executor/mesosutils"
 )
 
 func TestIfUsesLabelledPortsForServiceIDGen(t *testing.T) {
@@ -353,7 +354,7 @@ func createServiceId(taskId string, taskName string, port int) string {
 	return taskId + "_" + taskName + "_" + strconv.Itoa(port)
 }
 
-func prepareTaskInfo(taskID string, taskName string, consulName string, tags []string, ports []mesos.Port) mesos.TaskInfo {
+func prepareTaskInfo(taskID string, taskName string, consulName string, tags []string, ports []mesos.Port) mesosutils.TaskInfo {
 	seconds := 5.0
 	path := "/"
 	tagName := "tag"
@@ -373,7 +374,7 @@ func prepareTaskInfo(taskID string, taskName string, consulName string, tags []s
 
 	healthPort := ports[0].GetNumber()
 
-	return mesos.TaskInfo{
+	return mesosutils.TaskInfo{mesos.TaskInfo{
 		Discovery: &mesos.DiscoveryInfo{
 			Ports: &mesos.Ports{
 				Ports: ports,
@@ -394,7 +395,7 @@ func prepareTaskInfo(taskID string, taskName string, consulName string, tags []s
 				Path: &path,
 			},
 		},
-	}
+	}}
 }
 
 func createTestConsulServer(t *testing.T) (config *api.Config, server *testutil.TestServer) {

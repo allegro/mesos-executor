@@ -22,8 +22,10 @@ type TaskInfo struct {
 type HealthCheckType int
 
 const (
+	// NONE represents empty healthcheck
+	NONE HealthCheckType = iota
 	// HTTP indicates HTTP field in HealthCheck is configured
-	HTTP HealthCheckType = iota
+	HTTP
 	// TCP indicates healthcheck is TCP
 	TCP
 	// COMMAND indicates healthcheck is a command
@@ -59,6 +61,14 @@ func (h TaskInfo) GetTaskID() TaskID {
 // GetHealthCheck returns
 func (h TaskInfo) GetHealthCheck() (check HealthCheck) {
 	mesosCheck := h.TaskInfo.GetHealthCheck()
+
+	if mesosCheck == nil ||
+		mesosCheck.IntervalSeconds == nil ||
+		mesosCheck.TimeoutSeconds == nil {
+		check.Type = NONE
+		return check
+	}
+
 	check.Interval = Duration(*mesosCheck.IntervalSeconds)
 	check.Timeout = Duration(*mesosCheck.TimeoutSeconds)
 
