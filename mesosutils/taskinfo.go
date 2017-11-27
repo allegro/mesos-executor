@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	mesos "github.com/mesos/mesos-go/api/v1/lib"
 )
@@ -15,6 +16,61 @@ const serviceIDLabelKey = "serviceId"
 // providing convenient ways to access some of its values
 type TaskInfo struct {
 	TaskInfo mesos.TaskInfo
+}
+
+// HealthCheckType is type of healthcheck
+type HealthCheckType int
+
+const (
+	// HTTP indicates HTTP field in HealthCheck is configured
+	HTTP HealthCheckType = iota
+	// TCP indicates healthcheck is TCP
+	TCP
+	// COMMAND indicates healthcheck is a command
+	COMMAND
+)
+
+// HealthCheck keeps details how to check task health
+type HealthCheck struct {
+	// Type specify healthcheck type
+	Type HealthCheckType
+	// Interval specify how often healthcheck should be performed
+	Interval time.Duration
+	// Timeout specify duration after healtcheck should be aborted and marked as unhealthy
+	Timeout time.Duration
+	// HTTP contains details about heatlhcheck when HTTP Type is set
+	HTTP HTTPCheck
+	//TODO(janisz): Implement other healthchecks
+}
+
+// HTTPCheck contains details about HTTP healthcheck
+type HTTPCheck struct {
+	Path string
+}
+
+// TaskID is framework-generated ID to distinguish a task
+type TaskID string
+
+// GetTaskID returns id of the task
+func (h TaskInfo) GetTaskID() TaskID {
+	return TaskID(h.TaskInfo.GetTaskID().Value)
+}
+
+// GetHealthCheck returns
+func (h TaskInfo) GetHealthCheck() (check HealthCheck) {
+	mesosCheck := h.TaskInfo.GetHealthCheck()
+	check.Interval = Duration(*mesosCheck.IntervalSeconds)
+	check.Timeout = Duration(*mesosCheck.TimeoutSeconds)
+
+	if mesosCheck.HTTP != nil {
+		check.Type = HTTP
+		check.HTTP = HTTPCheck{Path: mesosCheck.GetHTTP().GetPath()}
+	}
+	if mesosCheck.TCP != nil {
+		check.Type = TCP
+	}
+
+	return check
 }
 
 // FindLabel returns a label matching given key
