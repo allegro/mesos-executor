@@ -1,4 +1,5 @@
 # Build and test folders
+bin/
 build/
 target/
 .env
