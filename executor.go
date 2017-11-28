@@ -130,7 +130,7 @@ func NewExecutor(cfg Config, hooks ...hook.Hook) *Executor {
 		context:       ctx,
 		contextCancel: ctxCancel,
 		events:        make(chan Event),
-		hookManager:   hook.Manager{hooks},
+		hookManager:   hook.Manager{Hooks: hooks},
 		stateUpdater:  state.BufferedUpdater(cfg.MesosConfig, cfg.StateUpdateBufferSize),
 		clock:         systemClock{},
 		random:        newRandom(),
@@ -267,7 +267,7 @@ func (e *Executor) taskEventLoop() {
 				fireHealthyHook = false
 				event := hook.Event{
 					Type:     hook.AfterTaskHealthyEvent,
-					TaskInfo: taskInfo,
+					TaskInfo: mesosutils.TaskInfo{TaskInfo: taskInfo},
 				}
 				if err := e.hookManager.HandleEvent(event, false); err != nil { // do not ignore errors here, so we will not have an incorrectly configured service
 					log.WithError(err).Errorf("Error calling after task healthy hooks. Stopping the command.")
@@ -374,7 +374,7 @@ func (e *Executor) shutDown(taskInfo mesos.TaskInfo, cmd Command) {
 	}
 	beforeTerminateEvent := hook.Event{
 		Type:     hook.BeforeTerminateEvent,
-		TaskInfo: taskInfo,
+		TaskInfo: mesosutils.TaskInfo{TaskInfo: taskInfo},
 	}
 	_ = e.hookManager.HandleEvent(beforeTerminateEvent, true) // ignore errors here, so every hook will have a chance to be called
 	cmd.Stop(gracePeriod)                                     // blocking call

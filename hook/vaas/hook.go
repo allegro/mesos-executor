@@ -7,7 +7,6 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/mesos/mesos-go/api/v1/lib"
 
 	"github.com/allegro/mesos-executor/hook"
 	"github.com/allegro/mesos-executor/mesosutils"
@@ -42,9 +41,8 @@ type Config struct {
 }
 
 // RegisterBackend adds new backend to VaaS if it does not exist.
-func (sh *Hook) RegisterBackend(taskInfo mesos.TaskInfo) error {
-	handyTaskInfo := mesosutils.TaskInfo{TaskInfo: taskInfo}
-	director := handyTaskInfo.GetLabelValue(vaasDirectorLabelKey)
+func (sh *Hook) RegisterBackend(taskInfo mesosutils.TaskInfo) error {
+	director := taskInfo.GetLabelValue(vaasDirectorLabelKey)
 	if director == "" {
 		log.Info("Director not set, skipping registration in VaaS.")
 		return nil
@@ -69,14 +67,14 @@ func (sh *Hook) RegisterBackend(taskInfo mesos.TaskInfo) error {
 		return err
 	}
 
-	ports := handyTaskInfo.GetPorts()
+	ports := taskInfo.GetPorts()
 
 	if len(ports) < 1 {
 		return errors.New("Service has no ports available")
 	}
 
 	var initialWeight *int
-	if weight, err := handyTaskInfo.GetWeight(); err != nil {
+	if weight, err := taskInfo.GetWeight(); err != nil {
 		log.WithError(err).Info("VaaS backend weight not set")
 	} else {
 		initialWeight = &weight
@@ -84,7 +82,7 @@ func (sh *Hook) RegisterBackend(taskInfo mesos.TaskInfo) error {
 
 	//TODO(janisz): Remove below code once we find a solution for
 	// setting initial weights in labels only.
-	initialWeightEnv := handyTaskInfo.FindEnvValue(vaasInitialWeight)
+	initialWeightEnv := taskInfo.FindEnvValue(vaasInitialWeight)
 	if val, err := strconv.Atoi(initialWeightEnv); err == nil {
 		initialWeight = &val
 	}
@@ -92,7 +90,7 @@ func (sh *Hook) RegisterBackend(taskInfo mesos.TaskInfo) error {
 	// check if it's canary instance - if yes, add new tag "canary" for VaaS
 	// (VaaS requires every canary instance to be tagged with "canary" tag)
 	// see https://github.com/allegro/vaas/blob/master/docs/documentation/canary.md for details
-	isCanary := handyTaskInfo.GetLabelValue(canaryLabelKey)
+	isCanary := taskInfo.GetLabelValue(canaryLabelKey)
 	var tags []string
 	if isCanary != "" {
 		tags = []string{canaryLabelKey}
@@ -108,7 +106,7 @@ func (sh *Hook) RegisterBackend(taskInfo mesos.TaskInfo) error {
 		Tags:               tags,
 	}
 
-	if handyTaskInfo.GetLabelValue(vaasAsyncLabelKey) == "true" {
+	if taskInfo.GetLabelValue(vaasAsyncLabelKey) == "true" {
 		taskURI, err := sh.client.AddBackend(backend, true)
 		if err != nil {
 			return fmt.Errorf("Could not register with VaaS director: %s", err)
@@ -139,7 +137,7 @@ func (sh *Hook) RegisterBackend(taskInfo mesos.TaskInfo) error {
 }
 
 // DeregisterBackend deletes backend from VaaS.
-func (sh *Hook) DeregisterBackend(taskInfo mesos.TaskInfo) error {
+func (sh *Hook) DeregisterBackend(_ mesosutils.TaskInfo) error {
 	if sh.backendID != nil {
 		log.WithField(vaasBackendIDKey, sh.backendID).
 			Info("backendID is set - scheduling backend for deletion via VaaS")

@@ -2,7 +2,7 @@
 
 package hook
 
-import mesos "github.com/mesos/mesos-go/api/v1/lib"
+import "github.com/allegro/mesos-executor/mesosutils"
 
 // EventType represents task lifecycle event type.
 type EventType int
@@ -22,7 +22,7 @@ const (
 // Event is a container type for various event specific data.
 type Event struct {
 	Type     EventType
-	TaskInfo mesos.TaskInfo
+	TaskInfo mesosutils.TaskInfo
 }
 
 // Hook is an interface for various executor extensions, that can add some actions
