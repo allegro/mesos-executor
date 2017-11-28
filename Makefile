@@ -55,7 +55,7 @@ $(COVERAGEDIR)/coverage.out: test-deps $(COVERAGEDIR) $(GO_SRC) $(TEST_TARGETS)
 	gover $(COVERAGEDIR) $(COVERAGEDIR)/coverage.out
 
 $(TEST_TARGETS):
-	go test -coverprofile=$(COVERAGEDIR)/$(shell basename $@).coverprofile $(TESTARGS) $@
+	go test -v -coverprofile=$(COVERAGEDIR)/$(shell basename $@).coverprofile $(TESTARGS) $@
 
 coveralls: test $(COVERAGEDIR)/coverage.out
 	goveralls -coverprofile=$(COVERAGEDIR)/coverage.out -service=travis-ci
