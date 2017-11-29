@@ -2,13 +2,13 @@
 # for detailed Gopkg.toml documentation.
 
 [[constraint]]
-  name = "github.com/Sirupsen/logrus"
+  name = "github.com/sirupsen/logrus"
   source = "https://github.com/sirupsen/logrus.git"
-  version = "0.11.5"
+  version = "1.0.3"
 
 [[constraint]]
   name = "github.com/evalphobia/logrus_sentry"
-  version = "0.2.12"
+  version = "0.4.2"
 
 [[constraint]]
   name = "github.com/getsentry/raven-go"

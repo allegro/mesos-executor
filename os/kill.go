@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"syscall"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/shirou/gopsutil/process"
 )
 

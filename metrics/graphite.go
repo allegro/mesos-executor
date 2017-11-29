@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/cyberdelia/go-metrics-graphite"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/pborman/uuid"

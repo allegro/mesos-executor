@@ -3,7 +3,7 @@ package metrics
 import (
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	metrics "github.com/rcrowley/go-metrics"
 )
 

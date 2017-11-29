@@ -10,7 +10,7 @@ import (
 	"gopkg.in/h2non/gentleman.v1/plugins/bodytype"
 	"gopkg.in/h2non/gentleman.v1/plugins/query"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // TaskStatus is a type representing task status from VaaS API responses.
