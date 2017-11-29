@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/allegro/mesos-executor/runenv"
 	"github.com/allegro/mesos-executor/mesosutils"
+	"github.com/allegro/mesos-executor/runenv"
 )
 
 type MockClient struct {
@@ -283,8 +283,6 @@ func TestIfBackendIDSetWhenAsyncBackendRegistrationSucceeds(t *testing.T) {
 }
 
 func TestIfAsyncBackendRegistrationTimesOutWhenVaasErrorOccurs(t *testing.T) {
-	t.Parallel()
-
 	_ = os.Setenv("CLOUD_DC", "dc6")
 	defer os.Unsetenv("CLOUD_DC")
 
