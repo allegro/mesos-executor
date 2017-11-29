@@ -1,7 +1,7 @@
 APPLICATION_NAME    := github.com/allegro/mesos-executor
 APPLICATION_VERSION := $(shell cat VERSION)
 
-LDFLAGS := -X main.Version=$(APPLICATION_VERSION) -extldflags "-static"
+LDFLAGS := -X main.Version=$(APPLICATION_VERSION)
 USER_ID := `id -u $$USER`
 
 BUILD_FOLDER := target
