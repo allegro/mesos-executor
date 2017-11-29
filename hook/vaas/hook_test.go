@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/mesos/mesos-go/api/v1/lib"
 	"github.com/stretchr/testify/assert"
@@ -269,7 +270,7 @@ func TestIfBackendIDSetWhenAsyncBackendRegistrationSucceeds(t *testing.T) {
 		return true
 	})).Return(nil)
 
-	serviceHook := Hook{client: mockClient}
+	serviceHook := Hook{client: mockClient, asyncTimeout: 3 * time.Second}
 
 	trueValue := "true"
 	err := serviceHook.RegisterBackend(prepareTaskInfoWithDirector(
@@ -309,7 +310,7 @@ func TestIfAsyncBackendRegistrationTimesOutWhenVaasErrorOccurs(t *testing.T) {
 		return true
 	})).Return(errors.New("VaaS Error"))
 
-	serviceHook := Hook{client: mockClient}
+	serviceHook := Hook{client: mockClient, asyncTimeout: 3 * time.Second}
 
 	trueValue := "true"
 	err := serviceHook.RegisterBackend(prepareTaskInfoWithDirector(
