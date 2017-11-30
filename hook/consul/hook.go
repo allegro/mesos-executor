@@ -46,15 +46,15 @@ type Config struct {
 
 // HandleEvent calls appropriate hook functions that correspond to supported
 // event types. Unsupported events are ignored.
-func (h *Hook) HandleEvent(event hook.Event) error {
+func (h *Hook) HandleEvent(event hook.Event) (hook.Env, error) {
 	switch event.Type {
 	case hook.AfterTaskHealthyEvent:
-		return h.RegisterIntoConsul(event.TaskInfo)
+		return nil, h.RegisterIntoConsul(event.TaskInfo)
 	case hook.BeforeTerminateEvent:
-		return h.DeregisterFromConsul(event.TaskInfo)
+		return nil, h.DeregisterFromConsul(event.TaskInfo)
 	default:
 		log.Debugf("Received unsupported event type %s - ignoring", event.Type)
-		return nil // ignore unsupported events
+		return nil, nil // ignore unsupported events
 	}
 }
 

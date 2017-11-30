@@ -58,7 +58,7 @@ func TestIfLaunchesCommandAndSendsStateUpdatesWhenTaskRequireCertButNoCertIsGive
 		mock.AnythingOfType("mesos.TaskID"),
 		mesos.TASK_FAILED,
 		mock.MatchedBy(func(info state.OptionalInfo) bool {
-			return "Canot launch task: problem with certificate: Missing certificate" == *info.Message
+			return "Cannot launch task: problem with certificate: Missing certificate" == *info.Message
 		})).Once()
 
 	exec := new(Executor)
@@ -182,7 +182,7 @@ func TestIfFiresAfterTaskHealthyOnlyOnFirstHealthyEvent(t *testing.T) {
 	mockedHook := new(mockHook)
 	mockedHook.On("HandleEvent", mock.MatchedBy(func(event hook.Event) bool {
 		return event.Type == hook.AfterTaskHealthyEvent
-	})).Return(nil).Once()
+	})).Return(hook.Env{}, nil).Once()
 	exec.hookManager.Hooks = append(exec.hookManager.Hooks, mockedHook)
 
 	exec.events <- Event{
@@ -208,11 +208,14 @@ func TestIfStopsAfterTaskHealthyEventHookFail(t *testing.T) {
 
 	mockedHook := new(mockHook)
 	mockedHook.On("HandleEvent", mock.MatchedBy(func(event hook.Event) bool {
+		return event.Type == hook.BeforeTaskStartEvent
+	})).Return(hook.Env{}, nil).Once()
+	mockedHook.On("HandleEvent", mock.MatchedBy(func(event hook.Event) bool {
 		return event.Type == hook.AfterTaskHealthyEvent
-	})).Return(errors.New("error")).Once()
+	})).Return(hook.Env{}, errors.New("error")).Once()
 	mockedHook.On("HandleEvent", mock.MatchedBy(func(event hook.Event) bool {
 		return event.Type == hook.BeforeTerminateEvent
-	})).Return(nil).Once()
+	})).Return(hook.Env{}, nil).Once()
 
 	exec := new(Executor)
 	exec.events = make(chan Event)
@@ -250,11 +253,14 @@ func TestIfHookCalledAfterTaskExits(t *testing.T) {
 
 	mockedHook := new(mockHook)
 	mockedHook.On("HandleEvent", mock.MatchedBy(func(event hook.Event) bool {
+		return event.Type == hook.BeforeTaskStartEvent
+	})).Return(hook.Env{}, nil).Once()
+	mockedHook.On("HandleEvent", mock.MatchedBy(func(event hook.Event) bool {
 		return event.Type == hook.AfterTaskHealthyEvent
-	})).Return(nil).Once()
+	})).Return(hook.Env{}, nil).Once()
 	mockedHook.On("HandleEvent", mock.MatchedBy(func(event hook.Event) bool {
 		return event.Type == hook.BeforeTerminateEvent
-	})).Return(nil).Once()
+	})).Return(hook.Env{}, nil).Once()
 
 	exec := new(Executor)
 	exec.events = make(chan Event)
@@ -356,9 +362,9 @@ type mockHook struct {
 	mock.Mock
 }
 
-func (m *mockHook) HandleEvent(event hook.Event) error {
+func (m *mockHook) HandleEvent(event hook.Event) (hook.Env, error) {
 	arg := m.Called(event)
-	return arg.Error(0)
+	return arg.Get(0).(hook.Env), arg.Error(1)
 }
 
 type mockUpdater struct {

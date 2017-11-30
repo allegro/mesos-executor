@@ -290,7 +290,7 @@ func TestIfNoErrorOnUnsupportedEvent(t *testing.T) {
 
 	require.NoError(t, err)
 
-	err = h.HandleEvent(hook.Event{
+	_, err = h.HandleEvent(hook.Event{
 		Type: hook.BeforeTaskStartEvent,
 	})
 

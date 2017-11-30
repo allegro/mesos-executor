@@ -13,6 +13,7 @@ import (
 
 	"github.com/allegro/mesos-executor/mesosutils"
 	"github.com/allegro/mesos-executor/runenv"
+	"github.com/allegro/mesos-executor/hook"
 )
 
 type MockClient struct {
@@ -321,4 +322,16 @@ func TestIfAsyncBackendRegistrationTimesOutWhenVaasErrorOccurs(t *testing.T) {
 	expectedId := 123
 	assert.Equal(t, &expectedId, serviceHook.backendID)
 	mockClient.AssertExpectations(t)
+}
+
+func TestIfNoErrorOnUnsupportedEvent(t *testing.T) {
+	h, err := NewHook(Config{})
+
+	require.NoError(t, err)
+
+	_, err = h.HandleEvent(hook.Event{
+		Type: hook.BeforeTaskStartEvent,
+	})
+
+	require.NoError(t, err)
 }

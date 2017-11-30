@@ -172,7 +172,7 @@ SUBSCRIBE_LOOP:
 	for {
 		select {
 		case <-recoveryTimeout.C:
-			return fmt.Errorf("Failed to re-establish subscription with agent within %v, aborting", e.config.MesosConfig.RecoveryTimeout)
+			return fmt.Errorf("failed to re-establish subscription with agent within %v, aborting", e.config.MesosConfig.RecoveryTimeout)
 		case <-e.context.Done():
 			break SUBSCRIBE_LOOP
 		case <-shouldConnect:
@@ -264,7 +264,7 @@ func (e *Executor) taskEventLoop() {
 			var err error
 			cmd, err = e.launchTask(taskInfo)
 			if err != nil {
-				msg := fmt.Sprintf("Canot launch task: %s", err)
+				msg := fmt.Sprintf("Cannot launch task: %s", err)
 				e.stateUpdater.UpdateWithOptions(taskInfo.GetTaskID(), mesos.TASK_FAILED, state.OptionalInfo{Message: &msg})
 				return
 			}
@@ -275,7 +275,7 @@ func (e *Executor) taskEventLoop() {
 					Type:     hook.AfterTaskHealthyEvent,
 					TaskInfo: mesosutils.TaskInfo{TaskInfo: taskInfo},
 				}
-				if err := e.hookManager.HandleEvent(event, false); err != nil { // do not ignore errors here, so we will not have an incorrectly configured service
+				if _, err := e.hookManager.HandleEvent(event, false); err != nil { // do not ignore errors here, so we will not have an incorrectly configured service
 					log.WithError(err).Errorf("Error calling after task healthy hooks. Stopping the command.")
 					msg := fmt.Sprintf("Error calling after task healthy hooks: %s", err)
 					e.shutDown(taskInfo, cmd)
@@ -355,7 +355,16 @@ func (e *Executor) launchTask(taskInfo mesos.TaskInfo) (Command, error) {
 		cmdOption = ForwardCmdOutput()
 	}
 
-	cmd, err := NewCommand(commandInfo, env, cmdOption)
+	beforeStartEvent := hook.Event{
+		Type:     hook.BeforeTaskStartEvent,
+		TaskInfo: mesosutils.TaskInfo{TaskInfo: taskInfo},
+	}
+	hookEnv, err := e.hookManager.HandleEvent(beforeStartEvent, false)
+	if err != nil {
+		return nil, fmt.Errorf("error running hooks before task start: %s", err)
+	}
+
+	cmd, err := NewCommand(commandInfo, append(env, hookEnv...), cmdOption)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create command: %s", err)
 	}
@@ -405,8 +414,8 @@ func (e *Executor) shutDown(taskInfo mesos.TaskInfo, cmd Command) {
 		Type:     hook.BeforeTerminateEvent,
 		TaskInfo: mesosutils.TaskInfo{TaskInfo: taskInfo},
 	}
-	_ = e.hookManager.HandleEvent(beforeTerminateEvent, true) // ignore errors here, so every hook will have a chance to be called
-	cmd.Stop(gracePeriod)                                     // blocking call
+	_, _ = e.hookManager.HandleEvent(beforeTerminateEvent, true) // ignore errors here, so every hook will have a chance to be called
+	cmd.Stop(gracePeriod)                                        // blocking call
 }
 
 func taskExitToEvent(exitStateChan <-chan TaskExitState, events chan<- Event) {

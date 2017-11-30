@@ -25,6 +25,9 @@ type Event struct {
 	TaskInfo mesosutils.TaskInfo
 }
 
+// Env is a container for os.Environ style list of combined environment variable strings.
+type Env []string
+
 // Hook is an interface for various executor extensions, that can add some actions
 // during task lifecycle events.
 type Hook interface {
@@ -32,5 +35,5 @@ type Hook interface {
 	// Received events may be handled in any way, but hook should ignore unknown or
 	// unsupported ones. Call to this function will block executor process until
 	// it returns. Order of received event types is undefined.
-	HandleEvent(Event) error
+	HandleEvent(Event) (Env, error)
 }
