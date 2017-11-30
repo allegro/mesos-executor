@@ -69,3 +69,5 @@ test-deps:
 		(go get github.com/modocache/gover)
 	@which goveralls > /dev/null || \
 		(go get github.com/mattn/goveralls)
+
+travis-ci: lint build coveralls
