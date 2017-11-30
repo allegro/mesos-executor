@@ -115,6 +115,8 @@ func TestIfBackendLocationIsSetFromVaasResponseHeader(t *testing.T) {
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 		}
+
+		w.Write(mockAddBackendResponse)
 	}))
 	defer ts.Close()
 
@@ -181,8 +183,8 @@ func TestIfBackendAsyncRegistrationSucceeds(t *testing.T) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-
 			w.Header().Set("Location", expectedPath)
+			w.Write(mockAddBackendResponse)
 		} else if r.URL.Path == expectedPath && r.Method == "GET" {
 			var task = Task{
 				Status: StatusReceived,
@@ -216,7 +218,6 @@ func TestIfBackendAsyncRegistrationSucceeds(t *testing.T) {
 func TestIfTaskStatusSucceeds(t *testing.T) {
 	expectedPath := apiPrefixPath + "/task/abc"
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 		if r.URL.Path == expectedPath && r.Method == "GET" {
 			var task = Task{
 				Status: StatusReceived,
@@ -263,3 +264,32 @@ func TestGettingTaskStatusFailureWhenVaasServerError(t *testing.T) {
 		ts.URL, taskPath,
 	))
 }
+
+var mockAddBackendResponse = []byte(`{
+   "address":"192.168.199.34",
+   "between_bytes_timeout":"1",
+   "connect_timeout":"0.3",
+   "dc":{
+	  "id":1,
+	  "name":"First datacenter",
+	  "resource_uri":"/api/v0.1/dc/1/",
+	  "symbol":"dc1"
+   },
+   "director":"/api/v0.1/director/1/",
+   "enabled":true,
+   "first_byte_timeout":"5",
+   "id":1,
+   "inherit_time_profile":true,
+   "max_connections":5,
+   "port":80,
+   "resource_uri":"/api/v0.1/backend/1/",
+   "status":"Unknown",
+   "tags":[],
+   "time_profile":{
+	  "between_bytes_timeout":"1",
+	  "connect_timeout":"0.3",
+	  "first_byte_timeout":"5",
+	  "max_connections":5
+   },
+   "weight":1
+}`)

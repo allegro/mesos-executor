@@ -1,14 +1,11 @@
 package vaas
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-
-	"gopkg.in/h2non/gentleman.v1"
-	"gopkg.in/h2non/gentleman.v1/plugins/body"
-	"gopkg.in/h2non/gentleman.v1/plugins/bodytype"
-	"gopkg.in/h2non/gentleman.v1/plugins/query"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -107,25 +104,25 @@ type Client interface {
 
 // DefaultClient is a REST client for VaaS API.
 type defaultClient struct {
-	httpClient gentleman.Client
+	httpClient *http.Client
+	username   string
+	apiKey     string
+	host       string
 }
 
 // FindDirectorID finds Director ID by name.
 func (c *defaultClient) FindDirectorID(name string) (int, error) {
-	request := c.httpClient.Request()
-	request.Path(apiDirectorPath)
-	request.Method("GET")
-	request.AddQuery("name", name)
-
-	response, err := c.doRequest(request)
-
+	request, err := c.newRequest("GET", c.host+apiDirectorPath, nil)
 	if err != nil {
 		return 0, err
 	}
 
-	var directorList DirectorList
+	query := request.URL.Query()
+	query.Add("name", name)
+	request.URL.RawQuery = query.Encode()
 
-	if err := response.JSON(&directorList); err != nil {
+	var directorList DirectorList
+	if _, err = c.doRequest(request, &directorList); err != nil {
 		return 0, err
 	}
 
@@ -140,20 +137,17 @@ func (c *defaultClient) FindDirectorID(name string) (int, error) {
 
 // AddBackend adds backend in VaaS director.
 func (c *defaultClient) AddBackend(backend *Backend, async bool) (string, error) {
-	request := c.httpClient.Request()
-	request.Path(apiBackendPath)
-	request.Method("POST")
-	request.Use(body.JSON(backend))
-	if async {
-		request.AddHeader("Prefer", "respond-async")
-	}
-
-	response, err := c.doRequest(request)
-
+	request, err := c.newRequest("POST", c.host+apiBackendPath, backend)
 	if err != nil {
 		return "", err
 	}
-	if err := response.JSON(&backend); err != nil {
+
+	if async {
+		request.Header.Set("Prefer", "respond-async")
+	}
+
+	response, err := c.doRequest(request, backend)
+	if err != nil {
 		return "", err
 	}
 
@@ -162,37 +156,37 @@ func (c *defaultClient) AddBackend(backend *Backend, async bool) (string, error)
 
 // DeleteBacked removes backend with given id from VaaS director.
 func (c *defaultClient) DeleteBackend(id int) error {
-	request := c.httpClient.Request()
-	request.Path(fmt.Sprintf("%s%d/", apiBackendPath, id))
-	request.Method("DELETE")
-	request.SetHeader("Prefer", "respond-async")
+	request, err := c.newRequest("DELETE", fmt.Sprintf("%s%s%d/", c.host, apiBackendPath, id), nil)
+	if err != nil {
+		return err
+	}
 
-	response, err := c.doRequest(request)
-
-	if response.StatusCode == http.StatusNotFound {
-		log.WithField(vaasBackendIDKey, id).
-			Warn("Tried to remove a non-existent backend")
+	request.Header.Set("Prefer", "respond-async")
+	response, err := c.do(request)
+	if response != nil && response.StatusCode == http.StatusNotFound {
+		log.WithField(vaasBackendIDKey, id).Warn("Tried to remove a non-existent backend")
 		return nil
 	}
+	if err != nil {
+		return err
+	}
+
+	request.Header.Set("Prefer", "respond-async")
+
+	_, err = c.doRequest(request, nil)
 
 	return err
 }
 
 // GetDC finds DC by name.
 func (c *defaultClient) GetDC(name string) (*DC, error) {
-	request := c.httpClient.Request()
-	request.Path(apiDcPath)
-	request.Method("GET")
-
-	response, err := c.doRequest(request)
-
+	request, err := c.newRequest("GET", c.host+apiDcPath, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	var dcList DCList
-
-	if err := response.JSON(&dcList); err != nil {
+	if _, err := c.doRequest(request, &dcList); err != nil {
 		return nil, err
 	}
 
@@ -206,41 +200,75 @@ func (c *defaultClient) GetDC(name string) (*DC, error) {
 }
 
 func (c *defaultClient) TaskStatus(task *Task) error {
-	request := c.httpClient.Request()
-	request.Method("GET")
-	request.Path(task.ResourceURI)
-
-	response, err := c.doRequest(request)
+	request, err := c.newRequest("GET", c.host+task.ResourceURI, nil)
 	if err != nil {
 		return err
 	}
 
-	if !response.Ok {
+	if _, err := c.doRequest(request, task); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *defaultClient) newRequest(method, url string, body interface{}) (*http.Request, error) {
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+
+	request, err := http.NewRequest(method, url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, err
+	}
+
+	query := request.URL.Query()
+	query.Add("username", c.username)
+	query.Add("api_key", c.apiKey)
+	request.URL.RawQuery = query.Encode()
+
+	return request, nil
+}
+
+func (c *defaultClient) doRequest(request *http.Request, v interface{}) (*http.Response, error) {
+	response, err := c.do(request)
+	if err != nil {
+		return response, err
+	}
+
+	rawResponse, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return response, err
+	}
+
+	if v == nil {
+		return response, nil
+	}
+	if err := json.Unmarshal(rawResponse, v); err != nil {
+		return response, err
+	}
+
+	return response, nil
+}
+
+func (c *defaultClient) do(request *http.Request) (*http.Response, error) {
+	response, err := c.httpClient.Do(request)
+
+	if err != nil {
+		return response, err
+	}
+
+	if response.StatusCode < 200 || response.StatusCode > 299 {
 		message := ""
-		rawResponse, err := ioutil.ReadAll(response.RawResponse.Body)
+		rawResponse, err := ioutil.ReadAll(response.Body)
 		if err != nil {
 			message = fmt.Sprintf("Additional error reading raw response: %s", err.Error())
 		} else {
 			message = string(rawResponse)
 		}
-		return fmt.Errorf("VaaS API error at %s (HTTP %d): %s",
-			request.Context.Request.URL, response.StatusCode, message)
-	}
-
-	return response.JSON(task)
-}
-
-func (c *defaultClient) doRequest(request *gentleman.Request) (*gentleman.Response, error) {
-	response, err := request.Send()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if !response.Ok {
-		rawResponse, _ := ioutil.ReadAll(response.RawResponse.Body)
 		return response, fmt.Errorf("VaaS API error at %s (HTTP %d): %s",
-			request.Context.Request.URL, response.StatusCode, rawResponse)
+			request.URL, response.StatusCode, message)
 	}
 
 	return response, nil
@@ -248,15 +276,10 @@ func (c *defaultClient) doRequest(request *gentleman.Request) (*gentleman.Respon
 
 // NewClient creates new REST client for VaaS API.
 func NewClient(hostname string, username string, apiKey string) Client {
-	httpClient := gentleman.New()
-	httpClient.URL(hostname)
-	httpClient.Use(query.SetMap(map[string]string{
-		"username": username,
-		"api_key":  apiKey,
-	}))
-	httpClient.Use(bodytype.Set("json"))
-
 	return &defaultClient{
-		httpClient: *httpClient,
+		httpClient: http.DefaultClient,
+		username:   username,
+		apiKey:     apiKey,
+		host:       hostname,
 	}
 }
