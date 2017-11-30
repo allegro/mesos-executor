@@ -52,3 +52,7 @@
 [[constraint]]
   name = "github.com/cyberdelia/go-metrics-graphite"
   revision = "39f87cc3b432bbb898d7c643c0e93cac2bc865ad"
+
+[[constraint]]
+  name = "github.com/go-logfmt/logfmt"
+  version = "0.3.0"

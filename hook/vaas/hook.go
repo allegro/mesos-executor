@@ -26,8 +26,9 @@ const canaryLabelKey = "canary"
 // Hook manages lifecycle of Varnish backend related to executed service
 // instance.
 type Hook struct {
-	backendID *int
-	client    Client
+	backendID    *int
+	client       Client
+	asyncTimeout time.Duration
 }
 
 // Config is Varnish configuration settable from environment
@@ -38,6 +39,8 @@ type Config struct {
 	VaasAPIUsername string `default:"" envconfig:"vaas_username"`
 	// Varnish as a Service access token
 	VaasAPIKey string `default:"" envconfig:"vaas_token"`
+	// VaasAsyncTimeout is a timeout for async registration in VaaS
+	VaasAsyncTimeout time.Duration `default:"90s" envconfig:"vaas_async_timeout"`
 }
 
 // RegisterBackend adds new backend to VaaS if it does not exist.
@@ -163,7 +166,7 @@ func (sh *Hook) watchTaskStatus(task *Task) (err error) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	timer := time.NewTimer(90 * time.Second)
+	timer := time.NewTimer(sh.asyncTimeout)
 	defer timer.Stop()
 
 	for {
@@ -215,5 +218,6 @@ func NewHook(cfg Config) (*Hook, error) {
 			cfg.VaasAPIUsername,
 			cfg.VaasAPIKey,
 		),
+		asyncTimeout: cfg.VaasAsyncTimeout,
 	}, nil
 }

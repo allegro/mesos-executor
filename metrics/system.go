@@ -32,7 +32,11 @@ func CPUTime() (float64, error) {
 // goroutine.
 func CaptureCPUTime(interval time.Duration) {
 	cpuUtilizationGauge := metrics.NewGaugeFloat64()
-	metrics.Register("runtime.CpuStats.Utilization", cpuUtilizationGauge)
+	err := metrics.Register("runtime.CpuStats.Utilization", cpuUtilizationGauge)
+	if err != nil {
+		log.Warnf("Could not register CPU utilisation metric: %s", err)
+		return
+	}
 	ticker := time.NewTicker(interval)
 
 	lastSeconds, _ := CPUTime() // if we are unable to get initial value 0.0 is okay
