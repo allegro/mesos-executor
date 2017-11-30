@@ -2,15 +2,17 @@ language: go
 go:
   - 1.9.x
   - master
-script: make coveralls
-deploy:
-  provider: releases
-  api_key:
-    secure: OxoxKpT3pTj5JjX2Pyfs/69RRzJ+uMwErvLYKCc7UwFvG3plag/qcJgawMLmqPg/xQ1KHeo8cdkIvbJkDRLH09e15YX3xNDCB2a/REGxqMs8iMBO7cWPWVYaNn925g1ffYEKR59csNib1ugkBRszeLhvCuvFG48NaSOU2fJyUdhbruh5xWrE8cJ6xRvUK1bwqMt4n5jPsHP4KlfRp3l3Jy/iDYogwnXanFSNGkZ6qPBYnY4I1b31T1podQtNjUKI5yKvd/Op3LoBu3z9EdhDpOykzs08LspcLo09Hn2c1RPilxmDwlfSni9EWIIMCgjFARiuXyxcyMzs6v9qf+WzBC7AnHy/KPIXfXIoSSDjV5oNgHIkvWdRKTGc3G4i0YmoxNx+ll4C71LMUT2t4X1zGMBA+E07Qioaq0dtXDemyQH51eiD0GpPk+35cK97pNY/CtdUNfJlerRa8wIxjk1yiFE+8K1vePXiA5xsDMiyIAQcv44W487+JEV29NnOnFoRU6PXMtQits+PWvn0BaJvCtQmodX9zQYkREy+h8RNST+IHJWi5SgSHqC8fmTbXi1iuGLq5kpR3TZvCrY52WZh/eWc7cyWTpZR6cJAX7OZcJguZRGPI4A740rCucnqkiyNltDPeArpkSnNIbY/go3XgtttsVycHjtYm8XhAJpo0A4=
-  before_deploy:
-    # Build the binary
-    - make release
-  skip_cleanup: true
-  file: target/executor-linux-amd64.zip
-  on:
-    tags: true
+
+jobs:
+  include:
+    - script: make travis-ci
+    - stage: GitHub Release
+      script: make release
+      deploy:
+        provider: releases
+        api_key:
+          secure: OxoxKpT3pTj5JjX2Pyfs/69RRzJ+uMwErvLYKCc7UwFvG3plag/qcJgawMLmqPg/xQ1KHeo8cdkIvbJkDRLH09e15YX3xNDCB2a/REGxqMs8iMBO7cWPWVYaNn925g1ffYEKR59csNib1ugkBRszeLhvCuvFG48NaSOU2fJyUdhbruh5xWrE8cJ6xRvUK1bwqMt4n5jPsHP4KlfRp3l3Jy/iDYogwnXanFSNGkZ6qPBYnY4I1b31T1podQtNjUKI5yKvd/Op3LoBu3z9EdhDpOykzs08LspcLo09Hn2c1RPilxmDwlfSni9EWIIMCgjFARiuXyxcyMzs6v9qf+WzBC7AnHy/KPIXfXIoSSDjV5oNgHIkvWdRKTGc3G4i0YmoxNx+ll4C71LMUT2t4X1zGMBA+E07Qioaq0dtXDemyQH51eiD0GpPk+35cK97pNY/CtdUNfJlerRa8wIxjk1yiFE+8K1vePXiA5xsDMiyIAQcv44W487+JEV29NnOnFoRU6PXMtQits+PWvn0BaJvCtQmodX9zQYkREy+h8RNST+IHJWi5SgSHqC8fmTbXi1iuGLq5kpR3TZvCrY52WZh/eWc7cyWTpZR6cJAX7OZcJguZRGPI4A740rCucnqkiyNltDPeArpkSnNIbY/go3XgtttsVycHjtYm8XhAJpo0A4=
+        skip_cleanup: true
+        file: target/executor-linux-amd64.zip
+        on:
+          tags: true
