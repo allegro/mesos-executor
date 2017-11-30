@@ -14,6 +14,7 @@ import (
 	mesos "github.com/mesos/mesos-go/api/v1/lib"
 
 	osutil "github.com/allegro/mesos-executor/os"
+	"github.com/allegro/mesos-executor/servicelog/scraper"
 )
 
 // TaskExitState is a type describing reason of program execution interuption.
@@ -119,7 +120,7 @@ func (c *cancellableCommand) Stop(gracePeriod time.Duration) {
 }
 
 // NewCommand returns a new command based on passed CommandInfo.
-func NewCommand(commandInfo mesos.CommandInfo, env []string) (Command, error) {
+func NewCommand(commandInfo mesos.CommandInfo, env []string, scr scraper.Scraper) (Command, error) {
 	// TODO(janisz): Implement shell policy
 	// From: https://github.com/apache/mesos/blob/1.1.3/include/mesos/mesos.proto#L509-L521
 	// There are two ways to specify the command:
@@ -134,9 +135,14 @@ func NewCommand(commandInfo mesos.CommandInfo, env []string) (Command, error) {
 	//		execlp(value, arguments(0), arguments(1), ...)).
 	cmd := exec.Command("sh", "-c", commandInfo.GetValue()) // #nosec
 	cmd.Env = combineExecutorAndTaskEnv(env, commandInfo.GetEnvironment())
-	// Redirect command output
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	if scr != nil { // start scraping command logs if scraper is provided
+		writer := scraper.Pipe(scr)
+		cmd.Stdout = writer
+		cmd.Stderr = writer
+	} else { // or just redirect command output
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
 	// Set new group for a command
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 

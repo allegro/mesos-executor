@@ -320,19 +320,20 @@ func (e *Executor) launchTask(taskInfo mesos.TaskInfo) (Command, error) {
 	validateCertificate := mesosutils.TaskInfo{TaskInfo: taskInfo}.GetLabelValue("validate-certificate")
 	if validateCertificate == "true" {
 		if certificate, err := GetCertFromEnvVariables(env); err != nil {
-			return nil, fmt.Errorf("Problem with certificate: %s", err)
+			return nil, fmt.Errorf("problem with certificate: %s", err)
 		} else if err := e.checkCert(certificate); err != nil {
-			return nil, fmt.Errorf("Problem with certificate: %s", err)
+			return nil, fmt.Errorf("problem with certificate: %s", err)
 		}
 	}
 
-	cmd, err := NewCommand(commandInfo, env)
+	// TODO(medzin): add ability to use service log scraper here
+	cmd, err := NewCommand(commandInfo, env, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot create command: %s", err)
+		return nil, fmt.Errorf("cannot create command: %s", err)
 	}
 
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("Cannot start command: %s", err)
+		return nil, fmt.Errorf("cannot start command: %s", err)
 	}
 
 	go taskExitToEvent(cmd.Wait(), e.events)
