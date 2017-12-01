@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -22,6 +23,8 @@ import (
 
 	"github.com/allegro/mesos-executor/hook"
 	"github.com/allegro/mesos-executor/mesosutils"
+	"github.com/allegro/mesos-executor/servicelog/appender"
+	"github.com/allegro/mesos-executor/servicelog/scraper"
 	"github.com/allegro/mesos-executor/state"
 )
 
@@ -317,7 +320,8 @@ func (e *Executor) launchTask(taskInfo mesos.TaskInfo) (Command, error) {
 
 	env := os.Environ()
 
-	validateCertificate := mesosutils.TaskInfo{TaskInfo: taskInfo}.GetLabelValue("validate-certificate")
+	utilTaskInfo := mesosutils.TaskInfo{TaskInfo: taskInfo}
+	validateCertificate := utilTaskInfo.GetLabelValue("validate-certificate")
 	if validateCertificate == "true" {
 		if certificate, err := GetCertFromEnvVariables(env); err != nil {
 			return nil, fmt.Errorf("problem with certificate: %s", err)
@@ -326,8 +330,20 @@ func (e *Executor) launchTask(taskInfo mesos.TaskInfo) (Command, error) {
 		}
 	}
 
-	// TODO(medzin): add ability to use service log scraper here
-	cmd, err := NewCommand(commandInfo, env, nil)
+	var cmdOption func(*exec.Cmd) error
+	switch utilTaskInfo.GetLabelValue("log-scraping") {
+	case "logstash":
+		scr := &scraper.LogFmt{}
+		apr, err := appender.NewLogstash(appender.LogstashAddressFromEnv())
+		if err != nil {
+			return nil, fmt.Errorf("cannot configure service log scraping: %s", err)
+		}
+		cmdOption = ScrapCmdOutput(scr, apr)
+	default:
+		cmdOption = ForwardCmdOutput()
+	}
+
+	cmd, err := NewCommand(commandInfo, env, cmdOption)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create command: %s", err)
 	}
