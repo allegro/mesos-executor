@@ -58,7 +58,7 @@ func TestIfLaunchesCommandAndSendsStateUpdatesWhenTaskRequireCertButNoCertIsGive
 		mock.AnythingOfType("mesos.TaskID"),
 		mesos.TASK_FAILED,
 		mock.MatchedBy(func(info state.OptionalInfo) bool {
-			return "Canot launch task: Problem with certificate: Missing certificate" == *info.Message
+			return "Canot launch task: problem with certificate: Missing certificate" == *info.Message
 		})).Once()
 
 	exec := new(Executor)

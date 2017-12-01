@@ -4,6 +4,8 @@ import (
 	"io"
 
 	"github.com/go-logfmt/logfmt"
+
+	"github.com/allegro/mesos-executor/servicelog"
 )
 
 // LogFmt is a scraper for logs in logfmt format.
@@ -15,13 +17,13 @@ type LogFmt struct {
 // StartScraping starts scraping logs in logfmt format from given reader and sends
 // parsed entries to the returned unbuffered channel. Logs are scraped as long
 // as the passed reader does not return an io.EOF error.
-func (logFmt *LogFmt) StartScraping(reader io.Reader) <-chan LogEntry {
+func (logFmt *LogFmt) StartScraping(reader io.Reader) <-chan servicelog.Entry {
 	decoder := logfmt.NewDecoder(reader)
-	logEntries := make(chan LogEntry)
+	logEntries := make(chan servicelog.Entry)
 
 	go func() {
 		for decoder.ScanRecord() {
-			logEntry := LogEntry{}
+			logEntry := servicelog.Entry{}
 
 			for decoder.ScanKeyval() {
 				key := string(decoder.Key())
