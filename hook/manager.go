@@ -1,6 +1,6 @@
 package hook
 
-import log "github.com/Sirupsen/logrus"
+import log "github.com/sirupsen/logrus"
 
 // Manager is a helper type that simplifies calling group of hooks and handling
 // returned errors.
