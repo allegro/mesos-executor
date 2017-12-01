@@ -11,9 +11,10 @@ type Scraper interface {
 	StartScraping(io.Reader) <-chan servicelog.Entry
 }
 
-// Pipe returns writer that can be used as a data provider for given scraper.
-func Pipe(scraper Scraper) io.Writer {
+// Pipe returns a channel with log entries and writer that can be used as a data
+// provider for given scraper.
+func Pipe(scraper Scraper) (<-chan servicelog.Entry, io.Writer) {
 	reader, writer := io.Pipe()
-	scraper.StartScraping(reader)
-	return writer
+	entries := scraper.StartScraping(reader)
+	return entries, writer
 }

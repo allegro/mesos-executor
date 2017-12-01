@@ -12,7 +12,7 @@ import (
 func TestIfNewCancellableCommandReturnsCommand(t *testing.T) {
 	os.Environ()
 	commandInfo := newCommandInfo("./sleep 100", "ignored", false, []string{"ignored"}, map[string]string{"one": "1", "two": "2"})
-	command, err := NewCommand(commandInfo, nil, nil)
+	command, err := NewCommand(commandInfo, nil)
 	cmd := command.(*cancellableCommand).cmd
 
 	assert.NoError(t, err)

@@ -3,6 +3,7 @@ package appender
 import (
 	"bufio"
 	"net"
+	"os"
 	"testing"
 
 	"github.com/allegro/mesos-executor/servicelog"
@@ -29,11 +30,26 @@ func TestIfSendsLogsToLogstash(t *testing.T) {
 	}()
 
 	entries := make(chan servicelog.Entry)
-	logstash, err := NewLogstash("tcp", ln.Addr().String())
+	logstash, err := NewLogstash(LogstashAddress("tcp", ln.Addr().String()))
 	require.NoError(t, err)
 
 	go logstash.Append(entries)
 
 	entries <- servicelog.Entry{}
 	<-done
+}
+
+func TestIfFailsToStartWithInvalidLogstashConfiguration(t *testing.T) {
+	_, err := NewLogstash(LogstashAddress("invalid", "!@#$"))
+	assert.Error(t, err)
+}
+
+func TestIfFailsToStartWithInvalidLogstashConfigurationInEnv(t *testing.T) {
+	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_PROTOCOL", "invalid")
+	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_ADDRESS", "!@#$")
+	defer os.Unsetenv("ALLEGRO_EXECUTOR_SERVICELOG_PROTOCOL")
+	defer os.Unsetenv("ALLEGRO_EXECUTOR_SERVICELOG_ADDRESS")
+
+	_, err := NewLogstash(LogstashAddressFromEnv())
+	assert.Error(t, err)
 }
