@@ -174,31 +174,13 @@
 
 [[projects]]
   branch = "master"
-  name = "golang.org/x/net"
-  packages = ["idna","publicsuffix"]
-  revision = "1c05540f6879653db88113bc4a2b70aec4bd491f"
-
-[[projects]]
-  branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix","windows"]
   revision = "b0e0dd72976dc482b6cb37c5640440f876ac1907"
 
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/text"
-  packages = ["internal/gen","internal/triegen","internal/ucd","secure/bidirule","transform","unicode/bidi","unicode/cldr","unicode/norm","unicode/rangetable"]
-  revision = "3bd178b88a8180be2df394a1fbb81313916f0e7b"
-
-[[projects]]
-  name = "gopkg.in/h2non/gentleman.v1"
-  packages = [".","context","middleware","mux","plugin","plugins/body","plugins/bodytype","plugins/cookies","plugins/headers","plugins/multipart","plugins/query","plugins/url","utils"]
-  revision = "1f1771a3f977fccd9f5025c0a9c103a3704f5e79"
-  version = "v1.0.4"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8522d35dfcdc7198aede151965ed9ee8a2ea85344701c1a8ec5360bdd4870d01"
+  inputs-digest = "d6b0ac6a3f4b3c6461778cb8431bf5ac1ebd5932c67f01245a9d90f869685441"
   solver-name = "gps-cdcl"
   solver-version = 1
