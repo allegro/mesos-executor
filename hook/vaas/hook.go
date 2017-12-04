@@ -198,15 +198,15 @@ func (sh *Hook) watchTaskStatus(task *Task) (err error) {
 
 // HandleEvent calls appropriate hook functions that correspond to supported
 // event types. Unsupported events are ignored.
-func (sh *Hook) HandleEvent(event hook.Event) error {
+func (sh *Hook) HandleEvent(event hook.Event) (hook.Env, error) {
 	switch event.Type {
 	case hook.AfterTaskHealthyEvent:
-		return sh.RegisterBackend(event.TaskInfo)
+		return nil, sh.RegisterBackend(event.TaskInfo)
 	case hook.BeforeTerminateEvent:
-		return sh.DeregisterBackend(event.TaskInfo)
+		return nil, sh.DeregisterBackend(event.TaskInfo)
 	default:
 		log.Debugf("Received unsupported event type %s - ignoring", event.Type)
-		return nil // ignore unsupported events
+		return nil, nil // ignore unsupported events
 	}
 }
 

@@ -263,3 +263,23 @@ func TestGetWeightReturnsWeightFromTagLabel(t *testing.T) {
 	require.Equal(t, 50, weight)
 	require.NoError(t, err)
 }
+
+func TestFindEnvValueReturnsCorrectValue(t *testing.T) {
+	expectedValue := "test env value"
+	key := "TEST_ENV_KEY"
+	vars := []mesos.Environment_Variable{
+		{Name: key, Value: expectedValue},
+	}
+	mesosTaskInfo := mesos.TaskInfo{
+		Command: &mesos.CommandInfo{
+			Environment: &mesos.Environment{Variables: vars},
+		},
+	}
+	taskInfo := TaskInfo{
+		TaskInfo: mesosTaskInfo,
+	}
+
+	returnedValue := taskInfo.FindEnvValue(key)
+
+	require.Equal(t, expectedValue, returnedValue)
+}

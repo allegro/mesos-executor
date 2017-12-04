@@ -13,7 +13,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/allegro/mesos-executor/servicelog/appender"
 	"github.com/allegro/mesos-executor/servicelog/scraper"
-	mesos "github.com/mesos/mesos-go/api/v1/lib"
+	"github.com/mesos/mesos-go/api/v1/lib"
 
 	osutil "github.com/allegro/mesos-executor/os"
 )
@@ -51,7 +51,7 @@ type cancellableCommand struct {
 
 func (c *cancellableCommand) Start() error {
 	if c.cmd == nil {
-		return errors.New("Missing command to run")
+		return errors.New("missing command to run")
 	}
 
 	if err := c.cmd.Start(); err != nil {
