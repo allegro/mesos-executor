@@ -49,6 +49,9 @@ type Config struct {
 	// SentryDSN is an address used for sending logs to Sentry
 	SentryDSN string `split_words:"true"`
 
+	// ServicelogIgnoreKeys is a list of ignored keys for log scraping module
+	ServicelogIgnoreKeys []string `split_words:"true"`
+
 	// Range in which certificate will be considered as expired. Used to
 	// prevent shutdown of all tasks at once.
 	RandomExpirationRange time.Duration `default:"3h" split_words:"true"`
@@ -333,7 +336,16 @@ func (e *Executor) launchTask(taskInfo mesos.TaskInfo) (Command, error) {
 	var cmdOption func(*exec.Cmd) error
 	switch utilTaskInfo.GetLabelValue("log-scraping") {
 	case "logstash":
-		scr := &scraper.LogFmt{}
+		var values [][]byte
+		for _, ignoredKey := range e.config.ServicelogIgnoreKeys {
+			values = append(values, []byte(ignoredKey))
+		}
+		filter := scraper.ValueFilter{
+			Values: values,
+		}
+		scr := &scraper.LogFmt{
+			KeyFilter: filter,
+		}
 		apr, err := appender.NewLogstash(appender.LogstashAddressFromEnv())
 		if err != nil {
 			return nil, fmt.Errorf("cannot configure service log scraping: %s", err)

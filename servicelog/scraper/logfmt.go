@@ -12,6 +12,7 @@ import (
 //
 // See: https://brandur.org/logfmt
 type LogFmt struct {
+	KeyFilter Filter
 }
 
 // StartScraping starts scraping logs in logfmt format from given reader and sends
@@ -26,9 +27,12 @@ func (logFmt *LogFmt) StartScraping(reader io.Reader) <-chan servicelog.Entry {
 			logEntry := servicelog.Entry{}
 
 			for decoder.ScanKeyval() {
-				key := string(decoder.Key())
+				key := decoder.Key()
+				if logFmt.KeyFilter != nil && logFmt.KeyFilter.Match(key) {
+					continue
+				}
 				value := string(decoder.Value())
-				logEntry[key] = value
+				logEntry[string(key)] = value
 			}
 
 			logEntries <- logEntry
