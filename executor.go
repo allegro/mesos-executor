@@ -23,6 +23,7 @@ import (
 
 	"github.com/allegro/mesos-executor/hook"
 	"github.com/allegro/mesos-executor/mesosutils"
+	"github.com/allegro/mesos-executor/servicelog"
 	"github.com/allegro/mesos-executor/servicelog/appender"
 	"github.com/allegro/mesos-executor/servicelog/scraper"
 	"github.com/allegro/mesos-executor/state"
@@ -336,21 +337,11 @@ func (e *Executor) launchTask(taskInfo mesos.TaskInfo) (Command, error) {
 	var cmdOption func(*exec.Cmd) error
 	switch utilTaskInfo.GetLabelValue("log-scraping") {
 	case "logstash":
-		var values [][]byte
-		for _, ignoredKey := range e.config.ServicelogIgnoreKeys {
-			values = append(values, []byte(ignoredKey))
-		}
-		filter := scraper.ValueFilter{
-			Values: values,
-		}
-		scr := &scraper.LogFmt{
-			KeyFilter: filter,
-		}
-		apr, err := appender.NewLogstash(appender.LogstashAddressFromEnv())
+		options, err := e.createOptionsForLogstashServiceLogScrapping(taskInfo)
 		if err != nil {
-			return nil, fmt.Errorf("cannot configure service log scraping: %s", err)
+			return nil, err
 		}
-		cmdOption = ScrapCmdOutput(scr, apr)
+		cmdOption = options
 	default:
 		cmdOption = ForwardCmdOutput()
 	}
@@ -382,6 +373,34 @@ func (e *Executor) launchTask(taskInfo mesos.TaskInfo) (Command, error) {
 	}
 
 	return cmd, nil
+}
+
+func (e *Executor) createOptionsForLogstashServiceLogScrapping(taskInfo mesos.TaskInfo) (func(*exec.Cmd) error, error) {
+	utilTaskInfo := mesosutils.TaskInfo{TaskInfo: taskInfo}
+	var values [][]byte
+	for _, ignoredKey := range e.config.ServicelogIgnoreKeys {
+		values = append(values, []byte(ignoredKey))
+	}
+	filter := scraper.ValueFilter{
+		Values: values,
+	}
+	scr := &scraper.LogFmt{
+		KeyFilter: filter,
+	}
+	apr, err := appender.NewLogstash(appender.LogstashAddressFromEnv())
+	if err != nil {
+		return nil, fmt.Errorf("cannot configure service log scraping: %s", err)
+	}
+	extenders := []servicelog.Extender{
+		servicelog.StaticDataExtender{
+			Data: map[string]string{
+				"instance-id": taskInfo.Executor.ExecutorID.String(),
+				"scid":        utilTaskInfo.GetLabelValue("scId"),
+			},
+		},
+		servicelog.SystemDataExtender{},
+	}
+	return ScrapCmdOutput(scr, apr, extenders...), nil
 }
 
 func (e *Executor) checkCert(cert *x509.Certificate) error {
