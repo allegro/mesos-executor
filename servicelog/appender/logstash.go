@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/kelseyhightower/envconfig"
@@ -13,15 +12,16 @@ import (
 )
 
 const (
-	logstashVersion           = "1"
-	logstashConfigPrefix      = "allegro_executor_servicelog_logstash"
-	logstashDefaultTimeFormat = time.RFC3339Nano
+	logstashVersion      = "1"
+	logstashConfigPrefix = "allegro_executor_servicelog_logstash"
 )
 
 type logstashConfig struct {
 	Protocol string `required:"true"`
 	Address  string `required:"true"`
 }
+
+type logstashEntry map[string]string
 
 type logstash struct {
 	conn net.Conn
@@ -35,13 +35,25 @@ func (l logstash) Append(entries <-chan servicelog.Entry) {
 	}
 }
 
-func (l logstash) sendEntry(entry servicelog.Entry) error {
-	// TODO(medzin): Move formatting logic to separate structure and extend it there
-	entry["@timestamp"] = time.Now().Format(logstashDefaultTimeFormat)
-	entry["@version"] = logstashVersion
-	bytes, err := json.Marshal(entry)
-	bytes = append(bytes, '\n')
+func (l logstash) formatEntry(entry servicelog.Entry) logstashEntry {
+	formattedEntry := logstashEntry{}
+	formattedEntry["@timestamp"] = entry["time"]
+	formattedEntry["@version"] = logstashVersion
+	formattedEntry["message"] = entry["msg"]
 
+	for key, value := range entry {
+		if key == "msg" || key == "time" {
+			continue
+		}
+		formattedEntry[key] = value
+	}
+
+	return formattedEntry
+}
+
+func (l logstash) sendEntry(entry servicelog.Entry) error {
+	formattedEntry := l.formatEntry(entry)
+	bytes, err := l.marshal(formattedEntry)
 	if err != nil {
 		return fmt.Errorf("unable to marshal log entry: %s", err)
 	}
@@ -49,6 +61,17 @@ func (l logstash) sendEntry(entry servicelog.Entry) error {
 		return fmt.Errorf("unable to write to Logstash server: %s", err)
 	}
 	return nil
+}
+
+func (l logstash) marshal(entry logstashEntry) ([]byte, error) {
+	bytes, err := json.Marshal(entry)
+	if err != nil {
+		return nil, err
+	}
+	// Logstash reads logs line by line so we need to add a newline after each
+	// generated JSON entry
+	bytes = append(bytes, '\n')
+	return bytes, nil
 }
 
 // NewLogstash creates new appender that will send log entries to Logstash.
