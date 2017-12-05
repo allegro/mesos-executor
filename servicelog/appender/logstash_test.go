@@ -39,6 +39,23 @@ func TestIfSendsLogsToLogstash(t *testing.T) {
 	<-done
 }
 
+func TestIfFormatsLogsCorrectly(t *testing.T) {
+	logstash := logstash{}
+	servicelogEntry := servicelog.Entry{}
+	servicelogEntry["time"] = "time"
+	servicelogEntry["msg"] = "log message"
+	servicelogEntry["level"] = "WARNING"
+	servicelogEntry["logger"] = "my logger"
+
+	formattedEntry := logstash.formatEntry(servicelogEntry)
+
+	assert.Equal(t, "time", formattedEntry["@timestamp"])
+	assert.Equal(t, "1", formattedEntry["@version"])
+	assert.Equal(t, "log message", formattedEntry["message"])
+	assert.Equal(t, "WARNING", formattedEntry["level"])
+	assert.Equal(t, "my logger", formattedEntry["logger"])
+}
+
 func TestIfFailsToStartWithInvalidLogstashConfiguration(t *testing.T) {
 	_, err := NewLogstash(LogstashAddress("invalid", "!@#$"))
 	assert.Error(t, err)
