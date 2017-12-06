@@ -24,7 +24,7 @@ func TestIfAddsSystemDataToLogEntry(t *testing.T) {
 
 func TestIfAddsStaticDataToLogEntry(t *testing.T) {
 	extender := StaticDataExtender{
-		Data: map[string]string{
+		Data: map[string]interface{}{
 			"data1": "data1",
 			"data2": "data2",
 		},

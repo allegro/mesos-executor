@@ -23,7 +23,7 @@ func TestIfSendsLogsToLogstash(t *testing.T) {
 		bytes, _, err := reader.ReadLine()
 
 		require.NoError(t, err)
-		assert.Contains(t, string(bytes), "\"@version\":\"1\"")
+		assert.Contains(t, string(bytes), "\"@version\":1")
 		assert.Contains(t, string(bytes), "@timestamp")
 
 		done <- struct{}{}
@@ -50,7 +50,7 @@ func TestIfFormatsLogsCorrectly(t *testing.T) {
 	formattedEntry := logstash.formatEntry(servicelogEntry)
 
 	assert.Equal(t, "time", formattedEntry["@timestamp"])
-	assert.Equal(t, "1", formattedEntry["@version"])
+	assert.Equal(t, 1, formattedEntry["@version"])
 	assert.Equal(t, "log message", formattedEntry["message"])
 	assert.Equal(t, "WARNING", formattedEntry["level"])
 	assert.Equal(t, "my logger", formattedEntry["logger"])

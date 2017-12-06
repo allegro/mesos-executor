@@ -5,7 +5,7 @@ import (
 )
 
 // Entry represents one scraped log line in flat key-value store.
-type Entry map[string]string
+type Entry map[string]interface{}
 
 // Extender is type used to extend log data with additional data.
 type Extender interface {
@@ -64,7 +64,7 @@ func (e SystemDataExtender) setIfNoError(entry Entry, key string, dataFunc func(
 
 // StaticDataExtender adds data specified in the Data field to passed log entry.
 type StaticDataExtender struct {
-	Data map[string]string
+	Data map[string]interface{}
 }
 
 // Extend returns a new log entry, based on the passed entry, with Data map
