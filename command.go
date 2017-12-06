@@ -11,11 +11,12 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/allegro/mesos-executor/servicelog/appender"
-	"github.com/allegro/mesos-executor/servicelog/scraper"
 	"github.com/mesos/mesos-go/api/v1/lib"
 
 	osutil "github.com/allegro/mesos-executor/os"
+	"github.com/allegro/mesos-executor/servicelog"
+	"github.com/allegro/mesos-executor/servicelog/appender"
+	"github.com/allegro/mesos-executor/servicelog/scraper"
 )
 
 // TaskExitState is a type describing reason of program execution interuption.
@@ -159,9 +160,10 @@ func ForwardCmdOutput() func(*exec.Cmd) error {
 
 // ScrapCmdOutput configures command so itd output will be scraped and forwarded
 // by provided log appender.
-func ScrapCmdOutput(s scraper.Scraper, a appender.Appender) func(*exec.Cmd) error {
+func ScrapCmdOutput(s scraper.Scraper, a appender.Appender, extenders ...servicelog.Extender) func(*exec.Cmd) error {
 	return func(cmd *exec.Cmd) error {
 		entries, writer := scraper.Pipe(s)
+		entries = servicelog.Extend(entries, extenders...)
 		cmd.Stderr = writer
 		cmd.Stdout = writer
 		go a.Append(entries)
