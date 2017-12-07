@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	logstashVersion      = "1"
+	logstashVersion      = 1
 	logstashConfigPrefix = "allegro_executor_servicelog_logstash"
 )
 
@@ -21,7 +21,7 @@ type logstashConfig struct {
 	Address  string `required:"true"`
 }
 
-type logstashEntry map[string]string
+type logstashEntry map[string]interface{}
 
 type logstash struct {
 	conn net.Conn

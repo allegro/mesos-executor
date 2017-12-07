@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -391,11 +392,15 @@ func (e *Executor) createOptionsForLogstashServiceLogScrapping(taskInfo mesos.Ta
 	if err != nil {
 		return nil, fmt.Errorf("cannot configure service log scraping: %s", err)
 	}
+	scid, err := strconv.Atoi(utilTaskInfo.GetLabelValue("scId"))
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse scid: %s", err)
+	}
 	extenders := []servicelog.Extender{
 		servicelog.StaticDataExtender{
-			Data: map[string]string{
+			Data: map[string]interface{}{
 				"instance-id": taskInfo.Executor.ExecutorID.String(),
-				"scid":        utilTaskInfo.GetLabelValue("scId"),
+				"scid":        scid,
 			},
 		},
 		servicelog.SystemDataExtender{},
