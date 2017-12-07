@@ -131,6 +131,8 @@ func NewExecutor(cfg Config, hooks ...hook.Hook) *Executor {
 	log.Infof("RecoveryTimeout             = %s", cfg.MesosConfig.RecoveryTimeout)
 	log.Infof("SubscriptionBackoffMax      = %s", cfg.MesosConfig.SubscriptionBackoffMax)
 	log.Infof("APIPath                     = %s", cfg.APIPath)
+	log.Infof("Debug                       = %t", cfg.Debug)
+	log.Infof("ServicelogIgnoreKeys        = %s", cfg.ServicelogIgnoreKeys)
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	return &Executor{
@@ -338,12 +340,14 @@ func (e *Executor) launchTask(taskInfo mesos.TaskInfo) (Command, error) {
 	var cmdOption func(*exec.Cmd) error
 	switch utilTaskInfo.GetLabelValue("log-scraping") {
 	case "logstash":
+		log.Info("Service logs will be forwarded to Logstash")
 		options, err := e.createOptionsForLogstashServiceLogScrapping(taskInfo)
 		if err != nil {
 			return nil, err
 		}
 		cmdOption = options
 	default:
+		log.Info("Service logs will be forwarded to stdout/stderr")
 		cmdOption = ForwardCmdOutput()
 	}
 

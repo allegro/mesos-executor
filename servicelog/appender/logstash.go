@@ -57,6 +57,7 @@ func (l logstash) sendEntry(entry servicelog.Entry) error {
 	if err != nil {
 		return fmt.Errorf("unable to marshal log entry: %s", err)
 	}
+	log.WithField("entry", string(bytes)).Debug("Sending log entry to Logstash")
 	if _, err = l.conn.Write(bytes); err != nil {
 		return fmt.Errorf("unable to write to Logstash server: %s", err)
 	}
