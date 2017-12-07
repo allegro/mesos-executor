@@ -403,7 +403,7 @@ func (e *Executor) createOptionsForLogstashServiceLogScrapping(taskInfo mesos.Ta
 	extenders := []servicelog.Extender{
 		servicelog.StaticDataExtender{
 			Data: map[string]interface{}{
-				"instance-id": taskInfo.Executor.ExecutorID.String(),
+				"instance-id": taskInfo.Executor.ExecutorID.GetValue(),
 				"scid":        scid,
 			},
 		},
