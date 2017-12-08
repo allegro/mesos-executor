@@ -3,8 +3,8 @@ package metrics
 import (
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	metrics "github.com/rcrowley/go-metrics"
+	log "github.com/sirupsen/logrus"
 )
 
 // SetupStderr will configure metric system to periodically print metrics on

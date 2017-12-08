@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/evalphobia/logrus_sentry"
 	"github.com/getsentry/raven-go"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/mesos/mesos-go/api/v1/lib/executor/config"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/allegro/mesos-executor"
 	"github.com/allegro/mesos-executor/hook"

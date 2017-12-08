@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/cyberdelia/go-metrics-graphite"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/pborman/uuid"
 	"github.com/rcrowley/go-metrics"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/allegro/mesos-executor/runenv"
 )

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	mesos "github.com/mesos/mesos-go/api/v1/lib"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/allegro/mesos-executor/mesosutils"
 	"github.com/allegro/mesos-executor/runenv"

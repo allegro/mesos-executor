@@ -2,13 +2,6 @@
 
 
 [[projects]]
-  name = "github.com/Sirupsen/logrus"
-  packages = ["."]
-  revision = "ba1b36c82c5e05c4f912a88eab0dcd91a171688f"
-  source = "https://github.com/sirupsen/logrus.git"
-  version = "v0.11.5"
-
-[[projects]]
   branch = "master"
   name = "github.com/StackExchange/wmi"
   packages = ["."]
@@ -34,8 +27,8 @@
 [[projects]]
   name = "github.com/evalphobia/logrus_sentry"
   packages = ["."]
-  revision = "7c1b7faba7ed5772effc03db8e1faa8c90624660"
-  version = "v0.2.14"
+  revision = "13ba9278e2adf1537fd94143a6b6a1c0dc008ac7"
+  version = "v0.4.2"
 
 [[projects]]
   branch = "master"
@@ -162,6 +155,12 @@
   revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
+  version = "v1.0.4"
+
+[[projects]]
   branch = "master"
   name = "github.com/stretchr/objx"
   packages = ["."]
@@ -174,6 +173,12 @@
 
 [[projects]]
   branch = "master"
+  name = "golang.org/x/crypto"
+  packages = ["ssh/terminal"]
+  revision = "94eea52f7b742c7cbe0b03b22f0c4c8631ece122"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix","windows"]
   revision = "b0e0dd72976dc482b6cb37c5640440f876ac1907"
@@ -181,6 +186,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d6b0ac6a3f4b3c6461778cb8431bf5ac1ebd5932c67f01245a9d90f869685441"
+  inputs-digest = "a9d24a19a3aa53326c8f20b0988a2f6b1c1e7e6ce99680bbe4a26c34fa7908b1"
   solver-name = "gps-cdcl"
   solver-version = 1

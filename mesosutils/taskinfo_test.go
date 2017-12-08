@@ -4,20 +4,20 @@ import (
 	"testing"
 
 	mesos "github.com/mesos/mesos-go/api/v1/lib"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIfGetTaskIDReturnsId(t *testing.T) {
 	taskInfo := TaskInfo{
 		TaskInfo: mesos.TaskInfo{},
 	}
-	assert.Equal (t, TaskID(""), taskInfo.GetTaskID())
+	assert.Equal(t, TaskID(""), taskInfo.GetTaskID())
 
 	taskInfo = TaskInfo{
 		TaskInfo: mesos.TaskInfo{TaskID: mesos.TaskID{Value: "task ID"}},
 	}
-	assert.Equal (t, TaskID("task ID"), taskInfo.GetTaskID())
+	assert.Equal(t, TaskID("task ID"), taskInfo.GetTaskID())
 }
 
 func TestIfGetHealthChecksReturnsNoneWhenHealthCheckIsNotSet(t *testing.T) {
@@ -32,8 +32,8 @@ func TestIfGetHealthChecksReturnsNoneIfSomeDetailsAreMissing(t *testing.T) {
 	path := "/ping"
 	httpCheckDetails := mesos.HealthCheck_HTTPCheckInfo{
 		Scheme: &scheme,
-		Port: 8080,
-		Path: &path,
+		Port:   8080,
+		Path:   &path,
 	}
 	taskInfo := TaskInfo{
 		TaskInfo: mesos.TaskInfo{
@@ -51,8 +51,8 @@ func TestIfGetHealthChecksReturnsHTTPWithAllDetails(t *testing.T) {
 	path := "/ping"
 	httpCheckDetails := mesos.HealthCheck_HTTPCheckInfo{
 		Scheme: &scheme,
-		Port: 8080,
-		Path: &path,
+		Port:   8080,
+		Path:   &path,
 	}
 	delaySeconds := 1.0
 	intervalSeconds := 2.0
@@ -62,13 +62,13 @@ func TestIfGetHealthChecksReturnsHTTPWithAllDetails(t *testing.T) {
 	taskInfo := TaskInfo{
 		TaskInfo: mesos.TaskInfo{
 			HealthCheck: &mesos.HealthCheck{
-				DelaySeconds: &delaySeconds,
-				IntervalSeconds: &intervalSeconds,
-				TimeoutSeconds: &timeoutSeconds,
-				GracePeriodSeconds: &gracePeriodSeconds,
+				DelaySeconds:        &delaySeconds,
+				IntervalSeconds:     &intervalSeconds,
+				TimeoutSeconds:      &timeoutSeconds,
+				GracePeriodSeconds:  &gracePeriodSeconds,
 				ConsecutiveFailures: &consecutiveFailures,
-				Type: mesos.HealthCheck_HTTP.Enum(),
-				HTTP: &httpCheckDetails,
+				Type:                mesos.HealthCheck_HTTP.Enum(),
+				HTTP:                &httpCheckDetails,
 			},
 		},
 	}

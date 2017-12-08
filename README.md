@@ -23,9 +23,11 @@ finish the started task and stops the whole executor process.
 Task is started when `Event_LAUNCH` is received with required `TaskInfo`. Before
 starting the received command executor fires `BeforeTaskStartEvent` event hook,
 and if any of registered hooks fail to do their jobs, it stops the execution process
-and fails. Right after starting the command, executor fires `AfterTaskStartEvent` event
-hook - and again if any of the hooks fail, executor fails also. It is worth
-noting that executor may exit without even starting a task.
+and fails. This hook can be used to modify the environment of the task by returning
+formatted variable strings ("VAR=value"). Right after starting the command, 
+executor fires `AfterTaskStartEvent` event hook - and again if any of the hooks fail, 
+executor fails also. It is worth noting that executor may exit without even 
+starting a task.
 
 Executor may exit in the following cases:
 * started tasks fail to start or run - executor quits with `TASK_FAILED` sent to

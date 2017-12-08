@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/allegro/mesos-executor/hook"
 	"github.com/allegro/mesos-executor/mesosutils"
 	"github.com/allegro/mesos-executor/runenv"
-	"github.com/allegro/mesos-executor/hook"
 )
 
 type MockClient struct {
