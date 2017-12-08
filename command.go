@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/mesos/mesos-go/api/v1/lib"
+	log "github.com/sirupsen/logrus"
 
 	osutil "github.com/allegro/mesos-executor/os"
 	"github.com/allegro/mesos-executor/servicelog"

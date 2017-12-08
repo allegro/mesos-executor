@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"syscall"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/shirou/gopsutil/process"
+	log "github.com/sirupsen/logrus"
 )
 
 // KillTree sends signal to whole process tree, starting from given pid as root.

@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	mesos "github.com/mesos/mesos-go/api/v1/lib"
 	"github.com/mesos/mesos-go/api/v1/lib/backoff"
 	"github.com/mesos/mesos-go/api/v1/lib/encoding"
@@ -21,6 +20,7 @@ import (
 	"github.com/mesos/mesos-go/api/v1/lib/executor/calls"
 	"github.com/mesos/mesos-go/api/v1/lib/executor/config"
 	"github.com/mesos/mesos-go/api/v1/lib/httpcli"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/allegro/mesos-executor/hook"
 	"github.com/allegro/mesos-executor/mesosutils"

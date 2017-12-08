@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/kelseyhightower/envconfig"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/allegro/mesos-executor/servicelog"
 )

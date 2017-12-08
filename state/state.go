@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	mesos "github.com/mesos/mesos-go/api/v1/lib"
 	"github.com/mesos/mesos-go/api/v1/lib/encoding"
 	"github.com/mesos/mesos-go/api/v1/lib/executor"
@@ -15,6 +14,7 @@ import (
 	"github.com/mesos/mesos-go/api/v1/lib/executor/config"
 	"github.com/mesos/mesos-go/api/v1/lib/httpcli"
 	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 const (

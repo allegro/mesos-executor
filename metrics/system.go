@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/shirou/gopsutil/process"
+	log "github.com/sirupsen/logrus"
 )
 
 // CPUTime returns an amount of CPU time (in seconds) assigned to executor process
