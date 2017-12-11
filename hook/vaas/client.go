@@ -35,6 +35,12 @@ const (
 	StatusRetry = TaskStatus("RETRY")
 )
 
+const (
+	contentTypeHeader = "Content-Type"
+	acceptHeader      = "Accept"
+	applicationJSON   = "application/json"
+)
+
 // Backend represents JSON structure of backend in VaaS API.
 type Backend struct {
 	ID                 *int     `json:"id,omitempty"`
@@ -222,6 +228,9 @@ func (c *defaultClient) newRequest(method, url string, body interface{}) (*http.
 	if err != nil {
 		return nil, err
 	}
+
+	request.Header.Set(acceptHeader, applicationJSON)
+	request.Header.Set(contentTypeHeader, applicationJSON)
 
 	query := request.URL.Query()
 	query.Add("username", c.username)

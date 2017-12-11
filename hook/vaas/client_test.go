@@ -15,6 +15,8 @@ import (
 func TestNoFailureWhenFindingDirectorByName(t *testing.T) {
 	expectedID := 123
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, applicationJSON, r.Header.Get(contentTypeHeader))
+		assert.Equal(t, applicationJSON, r.Header.Get(acceptHeader))
 		if r.URL.Path == "/api/v0.1/director/" && r.URL.RawQuery == "api_key=api-key&name=director&username=username" && r.Method == "GET" {
 			var dList = DirectorList{
 				Objects: []Director{{ID: expectedID, Name: "director"}},
@@ -44,6 +46,8 @@ func TestNoFailureWhenFindingDirectorByName(t *testing.T) {
 
 func TestFailureWhenFindingDirectorByName(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, applicationJSON, r.Header.Get(contentTypeHeader))
+		assert.Equal(t, applicationJSON, r.Header.Get(acceptHeader))
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer ts.Close()
@@ -57,6 +61,8 @@ func TestFailureWhenFindingDirectorByName(t *testing.T) {
 
 func TestBackendRegistrationFailureAfterVaasServerError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, applicationJSON, r.Header.Get(contentTypeHeader))
+		assert.Equal(t, applicationJSON, r.Header.Get(acceptHeader))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}))
 	defer ts.Close()
@@ -70,6 +76,8 @@ func TestBackendRegistrationFailureAfterVaasServerError(t *testing.T) {
 
 func TestBackendRemovalFailureAfterVaasServerError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, applicationJSON, r.Header.Get(contentTypeHeader))
+		assert.Equal(t, applicationJSON, r.Header.Get(acceptHeader))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}))
 	defer ts.Close()
@@ -83,6 +91,8 @@ func TestBackendRemovalFailureAfterVaasServerError(t *testing.T) {
 
 func TestFindingDCWithNameFailureAfterVaasServerError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, applicationJSON, r.Header.Get(contentTypeHeader))
+		assert.Equal(t, applicationJSON, r.Header.Get(acceptHeader))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}))
 	defer ts.Close()
@@ -96,6 +106,8 @@ func TestFindingDCWithNameFailureAfterVaasServerError(t *testing.T) {
 
 func TestIfBackendLocationIsSetFromVaasResponseHeader(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, applicationJSON, r.Header.Get(contentTypeHeader))
+		assert.Equal(t, applicationJSON, r.Header.Get(acceptHeader))
 		if r.URL.Path == "/api/v0.1/backend/" && r.Method == "POST" {
 			rawRequest, err := ioutil.ReadAll(r.Body)
 
@@ -135,6 +147,8 @@ func TestIfBackendLocationIsSetFromVaasResponseHeader(t *testing.T) {
 
 func TestNoFailureWhenRemovingExistingBackendInVaas(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, applicationJSON, r.Header.Get(contentTypeHeader))
+		assert.Equal(t, applicationJSON, r.Header.Get(acceptHeader))
 		if r.URL.Path == "/api/v0.1/backend/id/" && r.Method == "DELETE" {
 			w.WriteHeader(http.StatusAccepted)
 		} else {
@@ -152,6 +166,8 @@ func TestNoFailureWhenRemovingExistingBackendInVaas(t *testing.T) {
 
 func TestNoFailureWhenRemovingNonExistingBackendInVaas(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, applicationJSON, r.Header.Get(contentTypeHeader))
+		assert.Equal(t, applicationJSON, r.Header.Get(acceptHeader))
 		if r.Method == "DELETE" {
 			w.WriteHeader(http.StatusNotFound)
 		} else {
@@ -170,7 +186,8 @@ func TestNoFailureWhenRemovingNonExistingBackendInVaas(t *testing.T) {
 func TestIfBackendAsyncRegistrationSucceeds(t *testing.T) {
 	expectedPath := apiPrefixPath + "/task/abc"
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
+		assert.Equal(t, applicationJSON, r.Header.Get(contentTypeHeader))
+		assert.Equal(t, applicationJSON, r.Header.Get(acceptHeader))
 		rawRequest, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -218,6 +235,8 @@ func TestIfBackendAsyncRegistrationSucceeds(t *testing.T) {
 func TestIfTaskStatusSucceeds(t *testing.T) {
 	expectedPath := apiPrefixPath + "/task/abc"
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, applicationJSON, r.Header.Get(contentTypeHeader))
+		assert.Equal(t, applicationJSON, r.Header.Get(acceptHeader))
 		if r.URL.Path == expectedPath && r.Method == "GET" {
 			var task = Task{
 				Status: StatusReceived,
@@ -248,6 +267,8 @@ func TestIfTaskStatusSucceeds(t *testing.T) {
 func TestGettingTaskStatusFailureWhenVaasServerError(t *testing.T) {
 	taskPath := apiPrefixPath + "/task/abc"
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, applicationJSON, r.Header.Get(contentTypeHeader))
+		assert.Equal(t, applicationJSON, r.Header.Get(acceptHeader))
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer ts.Close()
