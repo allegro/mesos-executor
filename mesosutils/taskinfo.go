@@ -111,7 +111,7 @@ func (h TaskInfo) GetWeight() (int, error) {
 			return strconv.Atoi(strings.TrimPrefix(tags, weightPrefix))
 		}
 	}
-	return 0, fmt.Errorf("No weight defined")
+	return 0, fmt.Errorf("no weight defined")
 }
 
 // GetPorts returns a list of task ports

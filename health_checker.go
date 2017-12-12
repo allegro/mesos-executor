@@ -100,12 +100,12 @@ func newHealthCheck(check mesos.HealthCheck) healthCheckFunction {
 		return func() error { return tcpHealthCheck(check) }
 	}
 
-	return func() error { return fmt.Errorf("Unknown health check type: %s", check.GetType()) }
+	return func() error { return fmt.Errorf("unknown health check type: %s", check.GetType()) }
 }
 
 func commandHealthCheck(checkDefinition mesos.HealthCheck) error {
 	if checkDefinition.GetCommand() == nil {
-		return errors.New("Command health check not defined")
+		return errors.New("command health check not defined")
 	}
 
 	timeout := mesosutils.Duration(checkDefinition.GetTimeoutSeconds())
@@ -144,9 +144,9 @@ func commandHealthCheck(checkDefinition mesos.HealthCheck) error {
 	if err := cmd.Run(); err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
 			log.WithError(ctx.Err()).Info("Command health check timed out")
-			return fmt.Errorf("Command health check timed out after %s", timeout)
+			return fmt.Errorf("command health check timed out after %s", timeout)
 		}
-		return fmt.Errorf("Command health check errored: %s", err)
+		return fmt.Errorf("command health check errored: %s", err)
 	}
 	return nil
 }
@@ -183,7 +183,7 @@ func httpHealthCheck(checkDefinition mesos.HealthCheck) error {
 
 	response, err := client.Get(checkURL.String())
 	if err != nil {
-		return fmt.Errorf("Health check error: %s", err)
+		return fmt.Errorf("health check error: %s", err)
 	}
 	defer func() {
 		if err := response.Body.Close(); err != nil {
@@ -194,7 +194,7 @@ func httpHealthCheck(checkDefinition mesos.HealthCheck) error {
 	// Default executors treat return codes between 200 and 399 as success
 	// See: https://github.com/apache/mesos/blob/1.1.3/include/mesos/mesos.proto#L355-L357
 	if response.StatusCode < 200 || response.StatusCode >= 400 {
-		return fmt.Errorf("Health check error: received status code %d, but expected codes between 200 and 399", response.StatusCode)
+		return fmt.Errorf("health check error: received status code %d, but expected codes between 200 and 399", response.StatusCode)
 	}
 
 	return nil

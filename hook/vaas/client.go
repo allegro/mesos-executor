@@ -138,7 +138,7 @@ func (c *defaultClient) FindDirectorID(name string) (int, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("No Director with name %s found", name)
+	return 0, fmt.Errorf("no Director with name %s found", name)
 }
 
 // AddBackend adds backend in VaaS director.
@@ -202,7 +202,7 @@ func (c *defaultClient) GetDC(name string) (*DC, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("No DC with name %s found", name)
+	return nil, fmt.Errorf("no DC with name %s found", name)
 }
 
 func (c *defaultClient) TaskStatus(task *Task) error {

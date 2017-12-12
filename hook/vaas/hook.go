@@ -112,7 +112,7 @@ func (sh *Hook) RegisterBackend(taskInfo mesosutils.TaskInfo) error {
 	if taskInfo.GetLabelValue(vaasAsyncLabelKey) == "true" {
 		taskURI, err := sh.client.AddBackend(backend, true)
 		if err != nil {
-			return fmt.Errorf("Could not register with VaaS director: %s", err)
+			return fmt.Errorf("could not register with VaaS director: %s", err)
 		}
 		log.Info("Waiting for successful Varnish configuration change...")
 		sh.backendID = backend.ID
@@ -123,7 +123,7 @@ func (sh *Hook) RegisterBackend(taskInfo mesosutils.TaskInfo) error {
 		}
 		err = sh.watchTaskStatus(task)
 		if err != nil {
-			return fmt.Errorf("Could not register with VaaS director: %s", err)
+			return fmt.Errorf("could not register with VaaS director: %s", err)
 		}
 	} else {
 		_, err := sh.client.AddBackend(backend, false)
@@ -187,7 +187,7 @@ func (sh *Hook) watchTaskStatus(task *Task) (err error) {
 
 			switch task.Status {
 			case StatusFailure:
-				return fmt.Errorf("Registration in VaaS failed: %s", err)
+				return fmt.Errorf("registration in VaaS failed: %s", err)
 			case StatusSuccess:
 				log.Info("Registered backend in VaaS")
 				return nil

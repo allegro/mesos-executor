@@ -36,7 +36,7 @@ func (execHostnameFqdn) Run() (string, error) {
 	err := cmd.Run()
 
 	if err != nil {
-		return "", fmt.Errorf("Couldn't run 'hostname -f': %s", err)
+		return "", fmt.Errorf("couldn't run 'hostname -f': %s", err)
 	}
 
 	return out.String(), nil

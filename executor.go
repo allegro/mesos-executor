@@ -415,7 +415,7 @@ func (e *Executor) createOptionsForLogstashServiceLogScrapping(taskInfo mesos.Ta
 func (e *Executor) checkCert(cert *x509.Certificate) error {
 	certDuration := e.clock.Until(cert.NotAfter) - e.random.Duration(e.config.RandomExpirationRange)
 	if certDuration <= 0 {
-		return fmt.Errorf("Certificate valid period <= 0. Certificate invalid after %s", cert.NotAfter)
+		return fmt.Errorf("certificate valid period <= 0 - certificate invalid after %s", cert.NotAfter)
 	}
 
 	log.WithField("CertificateExpireDate", cert.NotAfter).Infof(

@@ -58,7 +58,7 @@ func TestIfLaunchesCommandAndSendsStateUpdatesWhenTaskRequireCertButNoCertIsGive
 		mock.AnythingOfType("mesos.TaskID"),
 		mesos.TASK_FAILED,
 		mock.MatchedBy(func(info state.OptionalInfo) bool {
-			return "Cannot launch task: problem with certificate: Missing certificate" == *info.Message
+			return "Cannot launch task: problem with certificate: missing certificate" == *info.Message
 		})).Once()
 
 	exec := new(Executor)
@@ -303,7 +303,7 @@ func TestCertificateCheckReturnErrorIfKillWillBeScheduledInThePast(t *testing.T)
 
 	err := exec.checkCert(fakeCert)
 
-	assert.EqualError(t, err, "Certificate valid period <= 0. Certificate invalid after 0001-01-01 00:00:00 +0000 UTC")
+	assert.EqualError(t, err, "certificate valid period <= 0 - certificate invalid after 0001-01-01 00:00:00 +0000 UTC")
 	random.AssertExpectations(t)
 	clock.AssertExpectations(t)
 }
