@@ -38,11 +38,11 @@ generate-source-deps:
 	go get -v -u golang.org/x/tools/cmd/stringer
 
 lint: lint-deps
-	gometalinter.v1 --config=gometalinter.json ./...
+	gometalinter.v2 --config=gometalinter.json ./...
 
 lint-deps:
-	@which gometalinter.v1 > /dev/null || \
-		(go get gopkg.in/alecthomas/gometalinter.v1 && gometalinter.v1 --install)
+	@which gometalinter.v2 > /dev/null || \
+		(go get -u -v gopkg.in/alecthomas/gometalinter.v2 && gometalinter.v2 --install)
 
 release: clean build
 	zip -j $(BUILD_FOLDER)/executor-linux-amd64.zip $(BUILD_FOLDER)/executor
