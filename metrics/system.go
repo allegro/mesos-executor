@@ -16,7 +16,7 @@ func CPUTime() (float64, error) {
 	p := getExecutorProcess()
 	t, err := p.Times()
 	if err != nil {
-		return 0, fmt.Errorf("Unable to get CPU times: %s", err)
+		return 0, fmt.Errorf("unable to get CPU times: %s", err)
 	}
 
 	// We cannot use cpu.TimesStat struct Total function because it sums all values -

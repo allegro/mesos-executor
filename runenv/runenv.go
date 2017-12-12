@@ -109,5 +109,5 @@ func getEnvVarIfSet(name string) (string, error) {
 	if os.Getenv(name) != "" {
 		return os.Getenv(name), nil
 	}
-	return "", fmt.Errorf("No %s environment variable set", name)
+	return "", fmt.Errorf("no %s environment variable set", name)
 }

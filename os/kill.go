@@ -24,7 +24,7 @@ func KillTree(signal syscall.Signal, pid int32) error {
 	curPid := syscall.Getpid()
 	curPgid, err := syscall.Getpgid(curPid)
 	if err != nil {
-		return fmt.Errorf("Error getting current process pgid: %s", err)
+		return fmt.Errorf("error getting current process pgid: %s", err)
 	}
 
 	var pgids []int
@@ -32,7 +32,7 @@ func KillTree(signal syscall.Signal, pid int32) error {
 	for _, proc := range processes {
 		pgid, err := syscall.Getpgid(int(proc.Pid))
 		if err != nil {
-			return fmt.Errorf("Error getting child process pgid: %s", err)
+			return fmt.Errorf("error getting child process pgid: %s", err)
 		}
 		if pgid == curPgid {
 			continue

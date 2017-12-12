@@ -119,7 +119,7 @@ func (u *bufferedUpdater) Wait(timeout time.Duration) error {
 		if len(u.buffer) == 0 && len(u.GetUnacknowledged()) == 0 {
 			return nil
 		} else if time.Since(start) >= timeout {
-			return fmt.Errorf("Timeout during state update buffer cleaning, %d events remained, %d events unacknowledged",
+			return fmt.Errorf("timeout during state update buffer cleaning, %d events remained, %d events unacknowledged",
 				len(u.buffer), len(u.GetUnacknowledged()))
 		}
 	}

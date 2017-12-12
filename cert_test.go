@@ -13,12 +13,12 @@ func TestIfReturnsErrorWhenNoValidCertificateFound(t *testing.T) {
 		err string
 		env []string
 	}{
-		{"Missing certificate", nil},
-		{"Missing certificate", []string{
+		{"missing certificate", nil},
+		{"missing certificate", []string{
 			"ALLEGRO_PKI_SENSITIVE_VAR=xxx",
 			"NOT_SENSITIVE=xxx",
 		}},
-		{"Missing certificate data", []string{
+		{"missing certificate data", []string{
 			"ALLEGRO_PKI_SENSITIVE_VAR=xxx",
 			"CERTIFICATE=xxx",
 			"NOT_SENSITIVE=xxx",

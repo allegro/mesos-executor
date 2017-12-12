@@ -49,7 +49,7 @@ func initSentry(config executor.Config) error {
 
 	environment, err := runenv.Environment()
 	if err != nil {
-		return fmt.Errorf("Unable to determine runtime environment: %s", err)
+		return fmt.Errorf("unable to determine runtime environment: %s", err)
 	}
 
 	if environment == runenv.LocalEnv {
@@ -60,7 +60,7 @@ func initSentry(config executor.Config) error {
 
 	client, err := raven.New(config.SentryDSN)
 	if err != nil {
-		return fmt.Errorf("Unable to setup raven client: %s", err)
+		return fmt.Errorf("unable to setup raven client: %s", err)
 	}
 	client.SetRelease(Version)
 	client.SetEnvironment(string(environment))
@@ -71,7 +71,7 @@ func initSentry(config executor.Config) error {
 		log.ErrorLevel,
 	})
 	if err != nil {
-		return fmt.Errorf("Unable to setup sentry hook for logger: %s", err)
+		return fmt.Errorf("unable to setup sentry hook for logger: %s", err)
 	}
 	sentryHook.Timeout = time.Second
 	log.AddHook(sentryHook)

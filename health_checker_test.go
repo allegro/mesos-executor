@@ -144,14 +144,14 @@ func TestNewHealthCheckShouldReturnNilWhenCheckPasses(t *testing.T) {
 func TestNewHealthCheckShouldReturnErrorOnUnknownCheck(t *testing.T) {
 	healthCheck := newHealthCheck(mesos.HealthCheck{})
 	err := healthCheck()
-	assert.EqualError(t, err, "Unknown health check type: UNKNOWN")
+	assert.EqualError(t, err, "unknown health check type: UNKNOWN")
 }
 
 func TestNewHealthCheckShouldReturnErrorOnUdefinedCommand(t *testing.T) {
 	commandType := mesos.HealthCheck_COMMAND
 	healthCheck := newHealthCheck(mesos.HealthCheck{Type: &commandType})
 	err := healthCheck()
-	assert.EqualError(t, err, "Unknown health check type: COMMAND")
+	assert.EqualError(t, err, "unknown health check type: COMMAND")
 }
 
 func TestCommandHealthCheckShouldReturnErrorOnEmptyCheck(t *testing.T) {
@@ -159,7 +159,7 @@ func TestCommandHealthCheckShouldReturnErrorOnEmptyCheck(t *testing.T) {
 	check := mesos.HealthCheck{Type: &commandType}
 
 	err := commandHealthCheck(check)
-	assert.EqualError(t, err, "Command health check not defined")
+	assert.EqualError(t, err, "command health check not defined")
 }
 
 func TestCommandHealthCheckShouldReturnErrorOnInvalidCommand(t *testing.T) {
@@ -167,7 +167,7 @@ func TestCommandHealthCheckShouldReturnErrorOnInvalidCommand(t *testing.T) {
 	command := mesos.CommandInfo{Value: &invalidCommand}
 	check := mesos.HealthCheck{Command: &command}
 	err := commandHealthCheck(check)
-	assert.EqualError(t, err, "Command health check errored: exit status 1")
+	assert.EqualError(t, err, "command health check errored: exit status 1")
 }
 
 func TestCommandHealthCheckShouldReturnErrorOnInvalidCheck(t *testing.T) {
@@ -193,7 +193,7 @@ func TestCommandHealthCheckShouldReturnErrorOnInvalidCommandForNonShell(t *testi
 	check := mesos.HealthCheck{Type: &commandType, Command: &command}
 
 	err := commandHealthCheck(check)
-	assert.EqualError(t, err, "Command health check errored: exec: \"(true)\": executable file not found in $PATH")
+	assert.EqualError(t, err, "command health check errored: exec: \"(true)\": executable file not found in $PATH")
 }
 
 func TestCommandHealthCheckShouldReturnErrorOnAfterTimeout(t *testing.T) {
@@ -203,7 +203,7 @@ func TestCommandHealthCheckShouldReturnErrorOnAfterTimeout(t *testing.T) {
 	timeout := 0.0
 	check := mesos.HealthCheck{Command: &command, TimeoutSeconds: &timeout}
 	err := commandHealthCheck(check)
-	assert.EqualError(t, err, "Command health check timed out after 0s")
+	assert.EqualError(t, err, "command health check timed out after 0s")
 }
 
 func TestIfTCPHealthCheckPassesWhenPortIsOpen(t *testing.T) {
@@ -278,7 +278,7 @@ func TestIfHTTPHealthCheckFailsWhenRequestIsInvalid(t *testing.T) {
 
 	err := httpHealthCheck(check)
 
-	assert.EqualError(t, err, "Health check error: received status code 400, but expected codes between 200 and 399")
+	assert.EqualError(t, err, "health check error: received status code 400, but expected codes between 200 and 399")
 }
 
 func TestIfHTTPHealthCheckFailsWhenServiceIsUnavailable(t *testing.T) {
@@ -290,7 +290,7 @@ func TestIfHTTPHealthCheckFailsWhenServiceIsUnavailable(t *testing.T) {
 
 	err := httpHealthCheck(check)
 
-	assert.EqualError(t, err, "Health check error: received status code 503, but expected codes between 200 and 399")
+	assert.EqualError(t, err, "health check error: received status code 503, but expected codes between 200 and 399")
 }
 
 func TestIfHTTPHealthCheckFailsWhenNoServiceIsListeningOnConfiguredPort(t *testing.T) {
