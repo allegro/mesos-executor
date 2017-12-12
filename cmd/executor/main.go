@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"time"
 
@@ -26,7 +27,11 @@ var Version string
 // Config contains application configuration
 var Config executor.Config
 
+var debug = *flag.Bool("debug", false, "Forces executor debug mode")
+
 func init() {
+	flag.Parse()
+
 	if err := envconfig.Process(environmentPrefix, &Config); err != nil {
 		log.WithError(err).Fatal("Failed to load executor configuration")
 	}
@@ -35,7 +40,8 @@ func init() {
 		log.WithError(err).Fatal("Failed to initialize Sentry")
 	}
 
-	if Config.Debug {
+	if Config.Debug || debug {
+		Config.Debug = true
 		log.SetLevel(log.DebugLevel)
 	} else {
 		log.SetLevel(log.InfoLevel)
