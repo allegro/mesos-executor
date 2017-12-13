@@ -90,6 +90,14 @@ If you want to test executor locally, you will need additionally:
 * [Vagrant][8]
 * [Ansible 2.2+][9]
 
+## Debug mode
+
+Executor offers a debug mode that provide extended logging and capabilities during
+runtime. Enabling this can significantly increase the amount of resources the 
+executor needs to operate, so do not turn this on, when it is not needed. To enable
+debug mode add `-debug` flag to executor command or set `ALLEGRO_EXECUTOR_DEBUG` 
+environment variable to `true`.
+
 ## Development
 
 ### Using Vagrant environment
