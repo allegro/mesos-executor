@@ -50,6 +50,23 @@ It is performed in the following steps:
 3. Wait `KillPolicyGracePeriod` (can be overridden with Task Kill Policy Grace Period).
 4. Sent SIGKILL to process tree.
 
+## Log scraping
+
+By default executor forwards service stdout/stderr to its own standard streams.
+It can however redirect them to data processing pipeline - [Logstash][11]. This 
+requires you to set up the connection to the Logstash service in the executor's 
+environmental variables:
+
+```bash
+ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_PROTOCOL="tcp" # tcp or udp
+ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_ADDRESS="localhost:1234" # host and port
+```
+
+Currently, the executor is able to parse and send only logs in the [logfmt][12] 
+format. To enable log scraping you need to set `log-scraping` label in Mesos 
+`TaskInfo` to `logfmt`. For more information see documentation of [servicelog][14]
+package.
+
 ## Hooks
 
 Executor supports integration with external system via hooks. The hook is an interface
@@ -169,3 +186,6 @@ Mesos Executor is distributed under the [Apache 2.0 License](LICENSE).
 [8]: https://www.vagrantup.com
 [9]: https://www.ansible.com
 [10]: https://mesos.apache.org/documentation/latest/mesos-containerizer/
+[11]: https://www.elastic.co/products/logstash
+[12]: https://brandur.org/logfmt
+[14]: https://godoc.org/github.com/allegro/mesos-executor/servicelog
