@@ -293,13 +293,21 @@ func (e *Executor) taskEventLoop() {
 		case Unhealthy:
 			unhealthy := false
 			e.stateUpdater.UpdateWithOptions(taskInfo.GetTaskID(), mesos.TASK_RUNNING, state.OptionalInfo{Healthy: &unhealthy, Message: &event.Message})
-		case FailedDueToUnhealthy, FailedDueToExpiredCertificate:
+		case FailedDueToUnhealthy:
 			unhealthy := false
 			info := state.OptionalInfo{Healthy: &unhealthy, Message: &event.Message}
 			e.stateUpdater.UpdateWithOptions(taskInfo.GetTaskID(), mesos.TASK_RUNNING, info)
 			log.WithFields(log.Fields{"TaskID": taskInfo.GetTaskID(), "Reason": event.Message}).Info("Killing task")
 			e.shutDown(taskInfo, cmd)
 			e.stateUpdater.UpdateWithOptions(taskInfo.GetTaskID(), mesos.TASK_FAILED, info)
+			return
+		case FailedDueToExpiredCertificate:
+			unhealthy := false
+			info := state.OptionalInfo{Healthy: &unhealthy, Message: &event.Message}
+			e.stateUpdater.UpdateWithOptions(taskInfo.GetTaskID(), mesos.TASK_RUNNING, info)
+			log.WithFields(log.Fields{"TaskID": taskInfo.GetTaskID(), "Reason": event.Message}).Info("Killing task")
+			e.shutDown(taskInfo, cmd)
+			e.stateUpdater.UpdateWithOptions(taskInfo.GetTaskID(), mesos.TASK_KILLED, info)
 			return
 		case CommandExited:
 			e.shutDown(taskInfo, cmd)
