@@ -179,13 +179,25 @@
 
 [[projects]]
   branch = "master"
+  name = "golang.org/x/net"
+  packages = ["context"]
+  revision = "42fe2e1c20de1054d3d30f82cc9fb5b41e2e3767"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix","windows"]
   revision = "b0e0dd72976dc482b6cb37c5640440f876ac1907"
 
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/time"
+  packages = ["rate"]
+  revision = "6dc17368e09b0e8634d71cac8168d853e869a0c7"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a9d24a19a3aa53326c8f20b0988a2f6b1c1e7e6ce99680bbe4a26c34fa7908b1"
+  inputs-digest = "c661d13723624c536ac04c84872ebae31e45b8b7cc4e554e9fd10a0199ae15a8"
   solver-name = "gps-cdcl"
   solver-version = 1
