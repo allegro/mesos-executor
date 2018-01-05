@@ -7,12 +7,27 @@ If you want to code something small, search for `ideal-for-contribution` tagged 
 ## Commit message format
 
 ```
-resolve #<issue number> | <commit message>
+Short (50 chars or less) summary of changes
+
+More detailed explanatory text, if necessary.  Wrap it to
+about 72 characters or so.  In some contexts, the first
+line is treated as the subject of an email and the rest of
+the text as the body.  The blank line separating the
+summary from the body is critical (unless you omit the body
+entirely); tools like rebase can get confused if you run
+the two together.
+
+Further paragraphs come after blank lines.
+
+  - Bullet points are okay, too
+
+  - Typically a hyphen or asterisk is used for the bullet,
+    preceded by a single space, with blank lines in
+    between, but conventions vary here
 ```
 
-i.e. `resolve #123 | my commit message`
-
-You can also use other *magic words* from [GitHub handbook](https://help.github.com/articles/closing-issues-via-commit-messages/).
+See [Git Project Commit Guidelines](https://git-scm.com/book/en/v2/Distributed-Git-Contributing-to-a-Project)
+for more info.
 
 ## General notes
 
