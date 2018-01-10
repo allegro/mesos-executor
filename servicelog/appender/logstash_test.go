@@ -30,7 +30,9 @@ func TestIfSendsLogsToLogstash(t *testing.T) {
 	}()
 
 	entries := make(chan servicelog.Entry)
-	logstash, err := NewLogstash(LogstashAddress("tcp", ln.Addr().String()))
+	writer, err := net.Dial("tcp", ln.Addr().String())
+	require.NoError(t, err)
+	logstash, err := NewLogstash(writer)
 	require.NoError(t, err)
 
 	go logstash.Append(entries)
@@ -56,17 +58,12 @@ func TestIfFormatsLogsCorrectly(t *testing.T) {
 	assert.Equal(t, "my logger", formattedEntry["logger"])
 }
 
-func TestIfFailsToStartWithInvalidLogstashConfiguration(t *testing.T) {
-	_, err := NewLogstash(LogstashAddress("invalid", "!@#$"))
-	assert.Error(t, err)
-}
-
-func TestIfFailsToStartWithInvalidLogstashConfigurationInEnv(t *testing.T) {
+func TestIfFailsToCreateWriterWithInvalidConfigurationInEnv(t *testing.T) {
 	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_PROTOCOL", "invalid")
 	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_ADDRESS", "!@#$")
 	defer os.Unsetenv("ALLEGRO_EXECUTOR_SERVICELOG_PROTOCOL")
 	defer os.Unsetenv("ALLEGRO_EXECUTOR_SERVICELOG_ADDRESS")
 
-	_, err := NewLogstash(LogstashAddressFromEnv())
+	_, err := LogstashWriterFromEnv()
 	assert.Error(t, err)
 }

@@ -3,8 +3,10 @@ package appender
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 
+	"github.com/allegro/mesos-executor/xio"
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
 
@@ -24,7 +26,7 @@ type logstashConfig struct {
 type logstashEntry map[string]interface{}
 
 type logstash struct {
-	conn net.Conn
+	writer io.Writer
 }
 
 func (l logstash) Append(entries <-chan servicelog.Entry) {
@@ -58,7 +60,7 @@ func (l logstash) sendEntry(entry servicelog.Entry) error {
 		return fmt.Errorf("unable to marshal log entry: %s", err)
 	}
 	log.WithField("entry", string(bytes)).Debug("Sending log entry to Logstash")
-	if _, err = l.conn.Write(bytes); err != nil {
+	if _, err = l.writer.Write(bytes); err != nil {
 		return fmt.Errorf("unable to write to Logstash server: %s", err)
 	}
 	return nil
@@ -75,9 +77,12 @@ func (l logstash) marshal(entry logstashEntry) ([]byte, error) {
 	return bytes, nil
 }
 
-// NewLogstash creates new appender that will send log entries to Logstash.
-func NewLogstash(options ...func(*logstash) error) (Appender, error) {
-	l := &logstash{}
+// NewLogstash creates new appender that will send log entries to Logstash using
+// passed writer.
+func NewLogstash(writer io.Writer, options ...func(*logstash) error) (Appender, error) {
+	l := &logstash{
+		writer: writer,
+	}
 	for _, option := range options {
 		if err := option(l); err != nil {
 			return nil, fmt.Errorf("invalid config option: %s", err)
@@ -86,27 +91,31 @@ func NewLogstash(options ...func(*logstash) error) (Appender, error) {
 	return l, nil
 }
 
-// LogstashAddress sets the connection details for the Logstash appender.
-func LogstashAddress(protocol, address string) func(*logstash) error {
+// LogstashWriterFromEnv creates the connection from the environment  variables
+// for the Logstash appender.
+func LogstashWriterFromEnv() (io.Writer, error) {
+	config := &logstashConfig{}
+	err := envconfig.Process(logstashConfigPrefix, config)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get address from env: %s", err)
+	}
+	return net.Dial(config.Protocol, config.Address)
+}
+
+// LogstashRateLimit adds rate limiting to logs sending. Logs send in higher rate
+// (log lines per seconds) will be discarded.
+func LogstashRateLimit(limit int) func(*logstash) error {
 	return func(l *logstash) error {
-		conn, err := net.Dial(protocol, address)
-		if err != nil {
-			return fmt.Errorf("unable to connect to Logstash server: %s", err)
-		}
-		l.conn = conn
+		l.writer = xio.DecorateWriter(l.writer, xio.RateLimit(limit))
 		return nil
 	}
 }
 
-// LogstashAddressFromEnv sets the connection details from the environment
-// variables for the Logstash appender.
-func LogstashAddressFromEnv() func(*logstash) error {
-	config := &logstashConfig{}
-	err := envconfig.Process(logstashConfigPrefix, config)
-	if err != nil {
-		return func(l *logstash) error {
-			return fmt.Errorf("unable to get address from env: %s", err)
-		}
+// LogstashSizeLimit adds size limiting to logs sending. Logs that exceeds passed
+// size (in bytes) will be discarded.
+func LogstashSizeLimit(size int) func(*logstash) error {
+	return func(l *logstash) error {
+		l.writer = xio.DecorateWriter(l.writer, xio.SizeLimit(size))
+		return nil
 	}
-	return LogstashAddress(config.Protocol, config.Address)
 }
