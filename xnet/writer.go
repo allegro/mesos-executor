@@ -1,4 +1,4 @@
-package netx
+package xnet
 
 import (
 	"fmt"
@@ -19,8 +19,8 @@ type SenderFunc func(addr Address, payload []byte) (int, error)
 // Address of a service in IP:PORT format
 type Address string
 
-// RoundRobin returns writer with round robin functionality. Every write could be sent to different backend.
-func RoundRobin(instanceProvider InstanceProvider, sender SenderFunc) io.Writer {
+// RoundRobinWriter returns writer with round robin functionality. Every write could be sent to different backend.
+func RoundRobinWriter(instanceProvider InstanceProvider, sender SenderFunc) io.Writer {
 	return &roundRobinWriter{provider: instanceProvider, sender: sender, instances: nil}
 }
 
