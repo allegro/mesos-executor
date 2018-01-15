@@ -1,4 +1,4 @@
-package netx
+package xnet
 
 import (
 	"fmt"
@@ -44,7 +44,7 @@ func TestIntegrationWithConsulRoundRobinAndNetworkSend(t *testing.T) {
 	require.NoError(t, err)
 
 	// create round robin writer writing by network and obtaining instances provided by consul
-	writer := RoundRobin(
+	writer := RoundRobinWriter(
 		DiscoveryServiceInstanceProvider(
 			"service-name",
 			time.Second,
@@ -169,7 +169,7 @@ func TestRoundRobinShouldWalkThruAllElementsWhenNoUpdate(t *testing.T) {
 		return len(payload), nil
 	}
 
-	writer := RoundRobin(provider, sender)
+	writer := RoundRobinWriter(provider, sender)
 
 	for i := 0; i < 6; i++ {
 		_, err := writer.Write(nil)
@@ -194,7 +194,7 @@ func TestRoundRobinShouldStartFromTheBegginingAfterUpdate(t *testing.T) {
 		return len(payload), nil
 	}
 
-	writer := RoundRobin(provider, sender)
+	writer := RoundRobinWriter(provider, sender)
 
 	_, err := writer.Write(nil)
 	assert.NoError(t, err)
@@ -261,7 +261,7 @@ func TestIfGetAddrsByNameReturnsOnlyMatchingInstancesFromConsul(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(fmt.Sprintf("serviceName=%s", tc.name), func(t *testing.T) {
 			addr, err := client.GetAddrsByName(tc.name)
 
 			assert.NoError(t, err)
