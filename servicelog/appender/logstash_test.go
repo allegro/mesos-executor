@@ -2,6 +2,7 @@ package appender
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"os"
 	"testing"
@@ -58,12 +59,37 @@ func TestIfFormatsLogsCorrectly(t *testing.T) {
 	assert.Equal(t, "my logger", formattedEntry["logger"])
 }
 
-func TestIfFailsToCreateWriterWithInvalidConfigurationInEnv(t *testing.T) {
-	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_PROTOCOL", "invalid")
-	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_ADDRESS", "!@#$")
-	defer os.Unsetenv("ALLEGRO_EXECUTOR_SERVICELOG_PROTOCOL")
-	defer os.Unsetenv("ALLEGRO_EXECUTOR_SERVICELOG_ADDRESS")
+func TestIfFailsToCreateAppenderWithInvalidRequiredConfigurationInEnv(t *testing.T) {
+	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_PROTOCOL", "invalid")
+	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_ADDRESS", "!@#$")
+	defer os.Unsetenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_PROTOCOL")
+	defer os.Unsetenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_ADDRESS")
 
-	_, err := LogstashWriterFromEnv()
+	_, err := LogstashAppenderFromEnv()
 	assert.Error(t, err)
+}
+
+func TestIfFailsToCreateAppenderWithInvalidOptionalConfigurationInEnv(t *testing.T) {
+	// valid required env
+	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_PROTOCOL", "udp")
+	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_ADDRESS", "localhost:8080")
+	defer os.Unsetenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_PROTOCOL")
+	defer os.Unsetenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_ADDRESS")
+
+	testCases := []struct {
+		envKey, envVal string
+	}{
+		{"ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_RATE_LIMIT", "invalid"},
+		{"ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_SIZE_LIMIT", "invalid"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("envKey=%s;envVal=%s", tc.envKey, tc.envVal), func(t *testing.T) {
+			// invalid optional env
+			os.Setenv(tc.envKey, tc.envVal)
+			defer os.Unsetenv(tc.envKey)
+			_, err := LogstashAppenderFromEnv()
+			assert.Error(t, err)
+		})
+	}
 }

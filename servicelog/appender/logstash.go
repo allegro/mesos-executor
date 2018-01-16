@@ -20,8 +20,10 @@ const (
 )
 
 type logstashConfig struct {
-	Protocol string `required:"true"`
-	Address  string `required:"true"`
+	Protocol  string `required:"true"`
+	Address   string `required:"true"`
+	RateLimit int    `split_words:"true"`
+	SizeLimit int    `split_words:"true"`
 }
 
 type logstashEntry map[string]interface{}
@@ -105,15 +107,25 @@ func NewLogstash(writer io.Writer, options ...func(*logstash) error) (Appender, 
 	return l, nil
 }
 
-// LogstashWriterFromEnv creates the connection from the environment  variables
-// for the Logstash appender.
-func LogstashWriterFromEnv() (io.Writer, error) {
+// LogstashAppenderFromEnv creates the appender from the environment variables.
+func LogstashAppenderFromEnv() (Appender, error) {
 	config := &logstashConfig{}
 	err := envconfig.Process(logstashConfigPrefix, config)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get address from env: %s", err)
+		return nil, fmt.Errorf("unable to get config from env: %s", err)
 	}
-	return net.Dial(config.Protocol, config.Address)
+	baseWriter, err := net.Dial(config.Protocol, config.Address)
+	if err != nil {
+		return nil, fmt.Errorf("invalid logstash connection data: %s", err)
+	}
+	var options []func(*logstash) error
+	if config.RateLimit > 0 {
+		options = append(options, LogstashRateLimit(config.RateLimit))
+	}
+	if config.SizeLimit > 0 {
+		options = append(options, LogstashSizeLimit(config.SizeLimit))
+	}
+	return NewLogstash(baseWriter, options...)
 }
 
 // LogstashRateLimit adds rate limiting to logs sending. Logs send in higher rate
