@@ -400,11 +400,7 @@ func (e *Executor) createOptionsForLogstashServiceLogScrapping(taskInfo mesos.Ta
 	scr := &scraper.LogFmt{
 		KeyFilter: filter,
 	}
-	writer, err := appender.LogstashWriterFromEnv()
-	if err != nil {
-		return nil, fmt.Errorf("cannot configure service log scraping: %s", err)
-	}
-	apr, err := appender.NewLogstash(writer)
+	apr, err := appender.LogstashAppenderFromEnv()
 	if err != nil {
 		return nil, fmt.Errorf("cannot configure service log scraping: %s", err)
 	}
