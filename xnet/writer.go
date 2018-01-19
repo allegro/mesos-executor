@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"reflect"
+	"sort"
 	"strconv"
 	"time"
 
 	"github.com/hashicorp/consul/api"
+	log "github.com/sirupsen/logrus"
 )
 
 // InstanceProvider is the channel where updated list of desired service are published
@@ -100,13 +103,21 @@ func DiscoveryServiceInstanceProvider(serviceName string, interval time.Duration
 	instancesChan := make(chan []Address)
 
 	go func() {
+		var currInstances []Address
 		for range time.NewTicker(interval).C {
-			instances, err := client.GetAddrsByName(serviceName)
+			newInstances, err := client.GetAddrsByName(serviceName)
 			if err != nil {
+				log.WithError(err).Warn("Unable to get newInstances from discovery service")
 				continue
 			}
-			//TODO(janisz): Update instances only when they changed.
-			instancesChan <- instances
+			sort.Slice(newInstances, func(i, j int) bool {
+				return newInstances[i] < newInstances[j]
+			})
+			if !reflect.DeepEqual(currInstances, newInstances) {
+				log.WithField("instances", newInstances).Infof("Service %q instances in discovery changed - sending update", serviceName)
+				currInstances = newInstances
+				instancesChan <- newInstances
+			}
 		}
 	}()
 
@@ -140,7 +151,6 @@ func (c *consulDiscoveryServiceClient) GetAddrsByName(serviceName string) ([]Add
 
 	instances := make([]Address, len(services))
 	for i, instance := range services {
-		//TODO(janisz): take network from configuration
 		instances[i] = Address(hostPort(instance.ServiceAddress, instance.ServicePort))
 	}
 

@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/testutil"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +18,6 @@ const (
 )
 
 func TestIntegrationWithConsulRoundRobinAndNetworkSend(t *testing.T) {
-
 	// start consul for discovery service
 	config, server := createTestConsulServer(t)
 	consulApiClient, err := api.NewClient(config)
@@ -125,7 +123,7 @@ func udpServer() (int, <-chan string, error) {
 
 func TestDiscoveryServiceInstanceProviderShouldPeriodicallyUpdatesInstances(t *testing.T) {
 	ret := make(chan []Address, 3)
-	client := &MockDiscoveryServiceClient{returns: ret}
+	client := &StubDiscoveryServiceClient{returns: ret}
 
 	// setup expectations
 	ret <- []Address{"192.0.2.1:80"}
@@ -141,24 +139,37 @@ func TestDiscoveryServiceInstanceProviderShouldPeriodicallyUpdatesInstances(t *t
 }
 
 func TestDiscoveryServiceInstanceProviderShouldUpdateInstancesWhenTheyAreEmpty(t *testing.T) {
-	ret := make(chan []Address, 3)
-	client := &MockDiscoveryServiceClient{returns: ret}
+	ret := make(chan []Address, 1)
+	client := &StubDiscoveryServiceClient{returns: ret}
 
 	// setup expectations
-	ret <- []Address{}
-	ret <- []Address{}
 	ret <- []Address{}
 
 	provider := DiscoveryServiceInstanceProvider("service name", 1, client)
 
 	assert.Equal(t, []Address{}, <-provider)
-	assert.Equal(t, []Address{}, <-provider)
-	assert.Equal(t, []Address{}, <-provider)
 	assert.Empty(t, ret)
 }
 
-func TestRoundRobinShouldWalkThruAllElementsWhenNoUpdate(t *testing.T) {
+func TestIfUpdatesAddressesOnlyIfTheyChanged(t *testing.T) {
+	returns := make(chan []Address, 5)
+	discoveryServiceClient := &StubDiscoveryServiceClient{returns}
 
+	// setup expectations
+	returns <- []Address{"127.0.0.1:1234", "127.0.0.1:4321"} // initial instances
+	returns <- []Address{"127.0.0.1:1234", "127.0.0.1:4321"} // same as before but different order
+	returns <- []Address{"127.0.0.1:1234", "127.0.0.1:4321"} // same as before
+	returns <- []Address{"127.0.0.1:4321", "127.0.0.1:1234"} // same as before
+	returns <- []Address{"127.0.0.1:5678", "127.0.0.1:8765"} // different ports
+
+	instanceProvider := DiscoveryServiceInstanceProvider("service-name", 1, discoveryServiceClient)
+
+	assert.Equal(t, []Address{"127.0.0.1:1234", "127.0.0.1:4321"}, <-instanceProvider)
+	assert.Equal(t, []Address{"127.0.0.1:5678", "127.0.0.1:8765"}, <-instanceProvider)
+	assert.Empty(t, returns)
+}
+
+func TestRoundRobinShouldWalkThruAllElementsWhenNoUpdate(t *testing.T) {
 	provider := make(chan []Address, 2)
 	provider <- []Address{"1", "2", "3"}
 
@@ -183,7 +194,6 @@ func TestRoundRobinShouldWalkThruAllElementsWhenNoUpdate(t *testing.T) {
 }
 
 func TestRoundRobinShouldStartFromTheBegginingAfterUpdate(t *testing.T) {
-
 	provider := make(chan []Address, 3)
 	provider <- []Address{"1", "2", "3"}
 
@@ -220,18 +230,17 @@ func TestDiscoveryServiceInstanceProviderShouldNotUpdateWithEmptyInstancesOnErro
 }
 
 type ErrorDiscoveryServiceClient struct {
-	mock.Mock
 }
 
 func (m ErrorDiscoveryServiceClient) GetAddrsByName(serviceName string) ([]Address, error) {
 	return nil, fmt.Errorf("error")
 }
 
-type MockDiscoveryServiceClient struct {
+type StubDiscoveryServiceClient struct {
 	returns chan []Address
 }
 
-func (m *MockDiscoveryServiceClient) GetAddrsByName(serviceName string) ([]Address, error) {
+func (m *StubDiscoveryServiceClient) GetAddrsByName(serviceName string) ([]Address, error) {
 	return <-m.returns, nil
 }
 
