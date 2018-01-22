@@ -26,7 +26,32 @@ func TestIfServerSendsReceivedDataToChannel(t *testing.T) {
 
 	conn, err := net.Dial("tcp", listener.Addr().String())
 	require.NoError(t, err)
+	defer conn.Close()
 	conn.Write([]byte("test"))
+
+	assert.Equal(t, []byte("test"), <-results)
+}
+
+func TestIfPacketServerListensOnLoopbackAddress(t *testing.T) {
+	conn, _, err := LoopbackPacketServer("udp")
+	require.NoError(t, err)
+	defer conn.Close()
+
+	addr, err := net.ResolveUDPAddr("udp", conn.LocalAddr().String())
+	require.NoError(t, err)
+
+	assert.True(t, addr.IP.IsLoopback())
+}
+
+func TestIfPacketServerSendsReceivedDataToChannel(t *testing.T) {
+	conn, results, err := LoopbackPacketServer("udp")
+	require.NoError(t, err)
+	defer conn.Close()
+
+	connIn, err := net.Dial("udp", conn.LocalAddr().String())
+	require.NoError(t, err)
+	defer connIn.Close()
+	connIn.Write([]byte("test"))
 
 	assert.Equal(t, []byte("test"), <-results)
 }
