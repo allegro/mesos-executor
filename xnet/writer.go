@@ -6,7 +6,6 @@ import (
 	"net"
 	"reflect"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/hashicorp/consul/api"
@@ -77,7 +76,7 @@ func (r *roundRobinWriter) write(payload []byte) (int, error) {
 }
 
 // UDPSender is a Sender implementation that can write payload to the network
-// Address and reuses single system socket. It uses UDP packets to send data.
+// address and reuses single system socket. It uses UDP packets to send data.
 type UDPSender struct {
 	conn *net.UDPConn
 }
@@ -93,12 +92,12 @@ func (s *UDPSender) Send(addr Address, payload []byte) (int, error) {
 		s.conn = conn
 	}
 
-	udpAddr, err := addressToUDP(addr)
+	udpAddr, err := net.ResolveUDPAddr("udp", string(addr))
 	if err != nil {
 		return 0, fmt.Errorf("invalid address %s: %s", addr, err)
 	}
 
-	n, err := s.conn.WriteTo(payload, &udpAddr)
+	n, err := s.conn.WriteTo(payload, udpAddr)
 	if err != nil {
 		return 0, fmt.Errorf("could not sent payload to %s: %s", addr, err)
 	}
@@ -113,20 +112,6 @@ func (s *UDPSender) Release() error {
 	err := s.conn.Close()
 	s.conn = nil
 	return err
-}
-
-func addressToUDP(addr Address) (net.UDPAddr, error) {
-	host, p, err := net.SplitHostPort(string(addr))
-	if err != nil {
-		return net.UDPAddr{}, err
-	}
-
-	port, err := strconv.Atoi(p)
-	if err != nil {
-		return net.UDPAddr{}, err
-	}
-
-	return net.UDPAddr{IP: net.ParseIP(host), Port: port}, nil
 }
 
 // DiscoveryServiceInstanceProvider returns InstanceProvider that is updated with
