@@ -19,7 +19,6 @@ const (
 )
 
 func TestIntegrationWithConsulRoundRobinAndNetworkSend(t *testing.T) {
-
 	// start consul for discovery service
 	config, server := createTestConsulServer(t)
 	consulApiClient, err := api.NewClient(config)
@@ -40,8 +39,7 @@ func TestIntegrationWithConsulRoundRobinAndNetworkSend(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	sender, err := UDPSender()
-	require.NoError(t, err)
+	sender := &UDPSender{}
 
 	// create round robin writer writing by network and obtaining instances provided by consul
 	writer := RoundRobinWriter(
@@ -60,10 +58,9 @@ func TestIntegrationWithConsulRoundRobinAndNetworkSend(t *testing.T) {
 }
 
 func TestNetworkSendShouldReturnErrorWhenConnectionUnavailable(t *testing.T) {
-	sender, err := UDPSender()
-	require.NoError(t, err)
+	sender := &UDPSender{}
 
-	bytesSent, err := sender(loopback, []byte("test"))
+	bytesSent, err := sender.Send(loopback, []byte("test"))
 
 	assert.Error(t, err)
 	assert.Zero(t, bytesSent)
@@ -73,10 +70,9 @@ func TestNetworkSendShouldReturnNumberOfSentBytes(t *testing.T) {
 	port, result, err := udpServer()
 	require.NoError(t, err)
 
-	sender, err := UDPSender()
-	require.NoError(t, err)
+	sender := &UDPSender{}
 
-	bytesSent, err := sender(localhost(port), []byte(testPayload))
+	bytesSent, err := sender.Send(localhost(port), []byte(testPayload))
 
 	assert.NoError(t, err)
 	assert.Equal(t, len(testPayload), bytesSent)
@@ -87,10 +83,9 @@ func TestUDPSenderWithSharedConnShouldReturnNumberOfSentBytes(t *testing.T) {
 	port, result, err := udpServer()
 	require.NoError(t, err)
 
-	sender, err := UDPSender()
-	require.NoError(t, err)
+	sender := &UDPSender{}
 
-	bytesSent, err := sender(localhost(port), []byte(testPayload))
+	bytesSent, err := sender.Send(localhost(port), []byte(testPayload))
 
 	assert.NoError(t, err)
 	assert.Equal(t, len(testPayload), bytesSent)
@@ -125,7 +120,7 @@ func udpServer() (int, <-chan string, error) {
 
 func TestDiscoveryServiceInstanceProviderShouldPeriodicallyUpdatesInstances(t *testing.T) {
 	ret := make(chan []Address, 3)
-	client := &MockDiscoveryServiceClient{returns: ret}
+	client := &StubDiscoveryServiceClient{returns: ret}
 
 	// setup expectations
 	ret <- []Address{"192.0.2.1:80"}
@@ -141,70 +136,75 @@ func TestDiscoveryServiceInstanceProviderShouldPeriodicallyUpdatesInstances(t *t
 }
 
 func TestDiscoveryServiceInstanceProviderShouldUpdateInstancesWhenTheyAreEmpty(t *testing.T) {
-	ret := make(chan []Address, 3)
-	client := &MockDiscoveryServiceClient{returns: ret}
+	ret := make(chan []Address, 1)
+	client := &StubDiscoveryServiceClient{returns: ret}
 
 	// setup expectations
-	ret <- []Address{}
-	ret <- []Address{}
 	ret <- []Address{}
 
 	provider := DiscoveryServiceInstanceProvider("service name", 1, client)
 
 	assert.Equal(t, []Address{}, <-provider)
-	assert.Equal(t, []Address{}, <-provider)
-	assert.Equal(t, []Address{}, <-provider)
 	assert.Empty(t, ret)
 }
 
-func TestRoundRobinShouldWalkThruAllElementsWhenNoUpdate(t *testing.T) {
+func TestIfUpdatesAddressesOnlyIfTheyChanged(t *testing.T) {
+	returns := make(chan []Address, 5)
+	discoveryServiceClient := &StubDiscoveryServiceClient{returns}
 
+	// setup expectations
+	returns <- []Address{"127.0.0.1:1234", "127.0.0.1:4321"} // initial instances
+	returns <- []Address{"127.0.0.1:1234", "127.0.0.1:4321"} // same as before but different order
+	returns <- []Address{"127.0.0.1:1234", "127.0.0.1:4321"} // same as before
+	returns <- []Address{"127.0.0.1:4321", "127.0.0.1:1234"} // same as before
+	returns <- []Address{"127.0.0.1:5678", "127.0.0.1:8765"} // different ports
+
+	instanceProvider := DiscoveryServiceInstanceProvider("service-name", 1, discoveryServiceClient)
+
+	assert.Equal(t, []Address{"127.0.0.1:1234", "127.0.0.1:4321"}, <-instanceProvider)
+	assert.Equal(t, []Address{"127.0.0.1:5678", "127.0.0.1:8765"}, <-instanceProvider)
+	assert.Empty(t, returns)
+}
+
+func TestRoundRobinShouldWalkThruAllElementsWhenNoUpdate(t *testing.T) {
 	provider := make(chan []Address, 2)
 	provider <- []Address{"1", "2", "3"}
 
-	var addresses []Address
-
-	sender := func(addr Address, payload []byte) (int, error) {
-		addresses = append(addresses, addr)
-		return len(payload), nil
-	}
+	sender := &MockSender{}
+	sender.On("Send", Address("1"), []byte("x")).Return(1, nil).Twice()
+	sender.On("Send", Address("2"), []byte("x")).Return(1, nil).Twice()
+	sender.On("Send", Address("3"), []byte("x")).Return(1, nil).Twice()
+	sender.On("Release").Return(nil)
 
 	writer := RoundRobinWriter(provider, sender)
 
 	for i := 0; i < 6; i++ {
-		_, err := writer.Write(nil)
+		_, err := writer.Write([]byte("x"))
 		assert.NoError(t, err)
 	}
 
-	assert.Equal(t, []Address{
-		"1", "2", "3",
-		"1", "2", "3"},
-		addresses)
+	sender.AssertExpectations(t)
 }
 
 func TestRoundRobinShouldStartFromTheBegginingAfterUpdate(t *testing.T) {
-
 	provider := make(chan []Address, 3)
 	provider <- []Address{"1", "2", "3"}
 
-	var addresses []Address
-
-	sender := func(addr Address, payload []byte) (int, error) {
-		addresses = append(addresses, addr)
-		return len(payload), nil
-	}
+	sender := &MockSender{}
+	sender.On("Send", Address("1"), []byte("x")).Return(1, nil).Times(2)
+	sender.On("Release").Return(nil)
 
 	writer := RoundRobinWriter(provider, sender)
 
-	_, err := writer.Write(nil)
+	_, err := writer.Write([]byte("x"))
 	assert.NoError(t, err)
 
-	provider <- []Address{"1", "2", "3"}
+	provider <- []Address{"1", "2", "4"}
 
-	_, err = writer.Write(nil)
+	_, err = writer.Write([]byte("x"))
+
 	assert.NoError(t, err)
-
-	assert.Equal(t, []Address{"1", "1"}, addresses)
+	sender.AssertExpectations(t)
 }
 
 func TestDiscoveryServiceInstanceProviderShouldNotUpdateWithEmptyInstancesOnError(t *testing.T) {
@@ -220,18 +220,17 @@ func TestDiscoveryServiceInstanceProviderShouldNotUpdateWithEmptyInstancesOnErro
 }
 
 type ErrorDiscoveryServiceClient struct {
-	mock.Mock
 }
 
 func (m ErrorDiscoveryServiceClient) GetAddrsByName(serviceName string) ([]Address, error) {
 	return nil, fmt.Errorf("error")
 }
 
-type MockDiscoveryServiceClient struct {
+type StubDiscoveryServiceClient struct {
 	returns chan []Address
 }
 
-func (m *MockDiscoveryServiceClient) GetAddrsByName(serviceName string) ([]Address, error) {
+func (m *StubDiscoveryServiceClient) GetAddrsByName(serviceName string) ([]Address, error) {
 	return <-m.returns, nil
 }
 
@@ -328,4 +327,18 @@ func createTestConsulServer(t *testing.T) (config *api.Config, server *testutil.
 
 func localhost(port int) Address {
 	return Address(fmt.Sprintf("%s:%d", loopback, port))
+}
+
+type MockSender struct {
+	mock.Mock
+}
+
+func (s *MockSender) Send(addr Address, payload []byte) (int, error) {
+	args := s.Called(addr, payload)
+	return args.Int(0), args.Error(1)
+}
+
+func (s *MockSender) Release() error {
+	args := s.Called()
+	return args.Error(0)
 }
