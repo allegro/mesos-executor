@@ -59,6 +59,30 @@ func TestIfFormatsLogsCorrectly(t *testing.T) {
 	assert.Equal(t, "my logger", formattedEntry["logger"])
 }
 
+func TestIfCreatesAppenderWithValidDiscoveryConfigurationInEnv(t *testing.T) {
+	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_PROTOCOL", "tcp")
+	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_DISCOVERY_SERVICE_NAME", "logstash")
+	defer os.Unsetenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_PROTOCOL")
+	defer os.Unsetenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_DISCOVERY_SERVICE_NAME")
+
+	logstash, err := LogstashAppenderFromEnv()
+
+	assert.NoError(t, err)
+	assert.NotNil(t, logstash)
+}
+
+func TestIfCreatesAppenderWithValidStaticAddressConfigurationInEnv(t *testing.T) {
+	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_PROTOCOL", "udp")
+	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_ADDRESS", "localhost:12345")
+	defer os.Unsetenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_PROTOCOL")
+	defer os.Unsetenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_ADDRESS")
+
+	logstash, err := LogstashAppenderFromEnv()
+
+	assert.NoError(t, err)
+	assert.NotNil(t, logstash)
+}
+
 func TestIfFailsToCreateAppenderWithInvalidRequiredConfigurationInEnv(t *testing.T) {
 	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_PROTOCOL", "invalid")
 	os.Setenv("ALLEGRO_EXECUTOR_SERVICELOG_LOGSTASH_ADDRESS", "!@#$")
