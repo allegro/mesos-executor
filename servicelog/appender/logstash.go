@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"time"
 
 	"github.com/allegro/mesos-executor/xio"
+	"github.com/allegro/mesos-executor/xnet"
+	"github.com/hashicorp/consul/api"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rcrowley/go-metrics"
 	log "github.com/sirupsen/logrus"
@@ -20,10 +23,16 @@ const (
 )
 
 type logstashConfig struct {
-	Protocol  string `required:"true"`
-	Address   string `required:"true"`
-	RateLimit int    `split_words:"true"`
-	SizeLimit int    `split_words:"true"`
+	Protocol                 string `default:"tcp"`
+	Address                  string
+	DiscoveryRefreshInterval time.Duration `default:"1s" split_words:"true"`
+	DiscoveryServiceName     string        `split_words:"true"`
+
+	RateLimit int `split_words:"true"`
+	SizeLimit int `split_words:"true"`
+
+	TCPKeepAlive time.Duration `default:"5s" envconfig:"tcp_keep_alive"`
+	TCPTimeout   time.Duration `default:"2s" envconfig:"tcp_timeout"`
 }
 
 type logstashEntry map[string]interface{}
@@ -31,8 +40,9 @@ type logstashEntry map[string]interface{}
 type logstash struct {
 	writer io.Writer
 
-	droppedBecauseOfSize metrics.Counter
-	droppedBecauseOfRate metrics.Counter
+	droppedBecauseOfRate    metrics.Counter
+	droppedBecauseOfSize    metrics.Counter
+	droppedBecauseOfTimeout metrics.Counter
 }
 
 func (l *logstash) Append(entries <-chan servicelog.Entry) {
@@ -75,6 +85,10 @@ func (l *logstash) sendEntry(entry servicelog.Entry) error {
 			l.droppedBecauseOfRate.Inc(1)
 			return nil // returning this error will spam stdout with errors
 		}
+		if e, ok := err.(net.Error); ok && e.Timeout() {
+			l.droppedBecauseOfTimeout.Inc(1)
+			return nil // returning this error will spam stdout with errors
+		}
 		return fmt.Errorf("unable to write to Logstash server: %s", err)
 	}
 	return nil
@@ -95,9 +109,10 @@ func (l *logstash) marshal(entry logstashEntry) ([]byte, error) {
 // passed writer.
 func NewLogstash(writer io.Writer, options ...func(*logstash) error) (Appender, error) {
 	l := &logstash{
-		writer:               writer,
-		droppedBecauseOfRate: metrics.GetOrRegisterCounter("servicelog.logstash.dropped.RateExceeded", metrics.DefaultRegistry),
-		droppedBecauseOfSize: metrics.GetOrRegisterCounter("servicelog.logstash.dropped.SizeExceeded", metrics.DefaultRegistry),
+		writer:                  writer,
+		droppedBecauseOfRate:    metrics.GetOrRegisterCounter("servicelog.logstash.dropped.RateExceeded", metrics.DefaultRegistry),
+		droppedBecauseOfSize:    metrics.GetOrRegisterCounter("servicelog.logstash.dropped.SizeExceeded", metrics.DefaultRegistry),
+		droppedBecauseOfTimeout: metrics.GetOrRegisterCounter("servicelog.logstash.dropped.Timeout", metrics.DefaultRegistry),
 	}
 	for _, option := range options {
 		if err := option(l); err != nil {
@@ -107,6 +122,32 @@ func NewLogstash(writer io.Writer, options ...func(*logstash) error) (Appender, 
 	return l, nil
 }
 
+// NewConsulLogstashWriter creates a new writer that will write data to instances
+// provided by local Consul agent. It will use round robin algorithm to spread
+// logs evenly to every Logstash instance. For TCP connections customised dialer
+// can be optionally passed to have more control over how the connections are made.
+func NewConsulLogstashWriter(protocol, serviceName string, refreshInterval time.Duration, dialer *net.Dialer) (io.Writer, error) {
+	consulClient, err := api.NewClient(api.DefaultConfig())
+	if err != nil {
+		return nil, fmt.Errorf("unable to create Consul client: %s", err)
+	}
+	discoveryClient := xnet.NewConsulDiscoveryServiceClient(consulClient)
+	instanceProvider := xnet.DiscoveryServiceInstanceProvider(serviceName, refreshInterval, discoveryClient)
+	var sender xnet.Sender
+	if protocol == "udp" {
+		sender = &xnet.UDPSender{}
+	} else {
+		if dialer != nil {
+			dialer = &net.Dialer{}
+		}
+		tcpSender := &xnet.TCPSender{
+			Dialer: *dialer,
+		}
+		sender = tcpSender
+	}
+	return xnet.RoundRobinWriter(instanceProvider, sender), nil
+}
+
 // LogstashAppenderFromEnv creates the appender from the environment variables.
 func LogstashAppenderFromEnv() (Appender, error) {
 	config := &logstashConfig{}
@@ -114,7 +155,17 @@ func LogstashAppenderFromEnv() (Appender, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to get config from env: %s", err)
 	}
-	baseWriter, err := net.Dial(config.Protocol, config.Address)
+	var baseWriter io.Writer
+	if len(config.DiscoveryServiceName) > 0 {
+		dialer := &net.Dialer{
+			KeepAlive: config.TCPKeepAlive,
+			Timeout:   config.TCPTimeout,
+		}
+		baseWriter, err = NewConsulLogstashWriter(config.Protocol,
+			config.DiscoveryServiceName, config.DiscoveryRefreshInterval, dialer)
+	} else {
+		baseWriter, err = net.Dial(config.Protocol, config.Address)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("invalid logstash connection data: %s", err)
 	}
