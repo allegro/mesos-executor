@@ -27,7 +27,7 @@ func TestUDPNetworkSendShouldReturnNumberOfSentBytes(t *testing.T) {
 
 	bytesSent, err := sender.Send(Address(conn.LocalAddr().String()), []byte("test"))
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 4, bytesSent)
 	assert.Equal(t, []byte("test"), <-result)
 }
