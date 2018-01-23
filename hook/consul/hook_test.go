@@ -172,13 +172,13 @@ func TestIfUsesPortLabelsForRegistration(t *testing.T) {
 		consulServiceName: "consulName",
 		consulServiceID:   createServiceId(taskID, consulName, 666),
 		port:              666,
-		tags:              []string{"hystrix", "metrics", "extras"},
+		tags:              []string{"hystrix", "metrics", "extras", "marathon"},
 	}
 	expectedService2 := instance{
 		consulServiceName: "consulName-secured",
 		consulServiceID:   createServiceId(taskID, consulNameSecond, 997),
 		port:              997,
-		tags:              []string{"metrics", "extras"},
+		tags:              []string{"metrics", "extras", "marathon"},
 	}
 
 	// Create a test Consul server
@@ -197,9 +197,9 @@ func TestIfUsesPortLabelsForRegistration(t *testing.T) {
 	services, _, err := client.Catalog().Services(&opts)
 	require.NoError(t, err)
 	require.Contains(t, services, consulName)
-	requireEqualElements(t, []string{"hystrix", "metrics", "extras"}, services[consulName])
+	requireEqualElements(t, expectedService.tags, services[consulName])
 	require.Contains(t, services, consulNameSecond)
-	requireEqualElements(t, []string{"metrics", "extras"}, services[consulNameSecond])
+	requireEqualElements(t, expectedService2.tags, services[consulNameSecond])
 }
 
 // requireEqualElements asserts that two slices are equal ignoring order of elements

@@ -82,6 +82,17 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 	ports := taskInfo.GetPorts()
 	globalTags := taskInfo.GetLabelKeysByValue(consulTagValue)
 
+	// When executor fails (e.g., OOM, host restarted) task will NOT
+	// be deregistered. This should be done by remote service reconciling
+	// state between mesos and consul. We are using marathon-consul.
+	// It requires task to be tagged with common tag: "marathon" by default.
+	// > common tag name added to every service registered in Consul,
+	// > should be unique for every Marathon-cluster connected to Consul
+	// https://github.com/allegro/marathon-consul/blob/1.4.2/config/config.go#L74
+	// TODO(janisz): Think about reading it from configuration
+	// for now we are using the default value of marathon-consul
+	globalTags = append(globalTags, "marathon")
+
 	var instancesToRegister []instance
 	for _, port := range ports {
 		portServiceName, err := getServiceLabel(port)
