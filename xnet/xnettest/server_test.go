@@ -27,8 +27,9 @@ func TestIfServerSendsReceivedDataToChannel(t *testing.T) {
 	conn, err := net.Dial("tcp", listener.Addr().String())
 	require.NoError(t, err)
 	defer conn.Close()
-	conn.Write([]byte("test"))
+	_, err = conn.Write([]byte("test"))
 
+	require.NoError(t, err)
 	assert.Equal(t, []byte("test"), <-results)
 }
 
@@ -51,7 +52,8 @@ func TestIfPacketServerSendsReceivedDataToChannel(t *testing.T) {
 	connIn, err := net.Dial("udp", conn.LocalAddr().String())
 	require.NoError(t, err)
 	defer connIn.Close()
-	connIn.Write([]byte("test"))
+	_, err = connIn.Write([]byte("test"))
 
+	require.NoError(t, err)
 	assert.Equal(t, []byte("test"), <-results)
 }

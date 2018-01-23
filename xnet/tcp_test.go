@@ -56,7 +56,7 @@ func TestIfTCPNetworkSenderReturnsNumberOfSentBytes(t *testing.T) {
 	sender := &TCPSender{}
 	bytesSent, err := sender.Send(Address(listener.Addr().String()), []byte("test"))
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, len([]byte("test")), bytesSent)
 	assert.Equal(t, []byte("test"), <-results)
 }
