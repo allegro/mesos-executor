@@ -3,6 +3,7 @@ package xnet
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 
@@ -11,11 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-)
 
-const (
-	testPayload = "test"
-	loopback    = "127.0.0.1"
+	"github.com/allegro/mesos-executor/xnet/xnettest"
 )
 
 func TestIntegrationWithConsulRoundRobinAndNetworkSend(t *testing.T) {
@@ -26,8 +24,12 @@ func TestIntegrationWithConsulRoundRobinAndNetworkSend(t *testing.T) {
 	defer stopConsul(server)
 
 	// create listener acting as a service
-	port, result, err := udpServer()
+	listener, result, err := xnettest.LoopbackServer("tcp4")
 	require.NoError(t, err)
+	defer listener.Close()
+	host, portString, err := net.SplitHostPort(listener.Addr().String())
+	require.NoError(t, err)
+	port, _ := strconv.Atoi(portString)
 
 	// register service in consul
 	agent := consulApiClient.Agent()
@@ -35,11 +37,11 @@ func TestIntegrationWithConsulRoundRobinAndNetworkSend(t *testing.T) {
 		ID:      "1",
 		Name:    "service-name",
 		Port:    port,
-		Address: loopback,
+		Address: host,
 	})
 	require.NoError(t, err)
 
-	sender := &UDPSender{}
+	sender := &TCPSender{}
 
 	// create round robin writer writing by network and obtaining instances provided by consul
 	writer := RoundRobinWriter(
@@ -50,72 +52,11 @@ func TestIntegrationWithConsulRoundRobinAndNetworkSend(t *testing.T) {
 		sender)
 
 	// write something
-	bytesSent, err := writer.Write([]byte(testPayload))
+	bytesSent, err := writer.Write([]byte("test"))
 
-	assert.NoError(t, err)
-	assert.Equal(t, len(testPayload), bytesSent)
-	assert.Equal(t, testPayload, <-result)
-}
-
-func TestNetworkSendShouldReturnErrorWhenConnectionUnavailable(t *testing.T) {
-	sender := &UDPSender{}
-
-	bytesSent, err := sender.Send(loopback, []byte("test"))
-
-	assert.Error(t, err)
-	assert.Zero(t, bytesSent)
-}
-
-func TestNetworkSendShouldReturnNumberOfSentBytes(t *testing.T) {
-	port, result, err := udpServer()
 	require.NoError(t, err)
-
-	sender := &UDPSender{}
-
-	bytesSent, err := sender.Send(localhost(port), []byte(testPayload))
-
-	assert.NoError(t, err)
-	assert.Equal(t, len(testPayload), bytesSent)
-	assert.Equal(t, testPayload, <-result)
-}
-
-func TestUDPSenderWithSharedConnShouldReturnNumberOfSentBytes(t *testing.T) {
-	port, result, err := udpServer()
-	require.NoError(t, err)
-
-	sender := &UDPSender{}
-
-	bytesSent, err := sender.Send(localhost(port), []byte(testPayload))
-
-	assert.NoError(t, err)
-	assert.Equal(t, len(testPayload), bytesSent)
-	assert.Equal(t, testPayload, <-result)
-}
-
-func udpServer() (int, <-chan string, error) {
-	udpAddr := net.UDPAddr{}
-	conn, err := net.ListenUDP("udp", &udpAddr)
-	if err != nil {
-		return 0, nil, err
-	}
-
-	udpAddr, _ = addressToUDP(Address(conn.LocalAddr().String()))
-
-	result := make(chan string)
-
-	go func() {
-		defer conn.Close()
-		buf := make([]byte, 1024)
-		n, _, err := conn.ReadFrom(buf)
-		if err != nil {
-			result <- err.Error()
-			return
-		}
-
-		result <- string(buf[0:n])
-	}()
-
-	return udpAddr.Port, result, nil
+	assert.Equal(t, 4, bytesSent)
+	assert.Equal(t, []byte("test"), <-result)
 }
 
 func TestDiscoveryServiceInstanceProviderShouldPeriodicallyUpdatesInstances(t *testing.T) {
@@ -323,10 +264,6 @@ func createTestConsulServer(t *testing.T) (config *api.Config, server *testutil.
 	config = api.DefaultConfig()
 	config.Address = server.HTTPAddr
 	return config, server
-}
-
-func localhost(port int) Address {
-	return Address(fmt.Sprintf("%s:%d", loopback, port))
 }
 
 type MockSender struct {

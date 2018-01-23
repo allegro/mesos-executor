@@ -76,59 +76,6 @@ func (r *roundRobinWriter) write(payload []byte) (int, error) {
 	return r.sender.Send(instance, payload)
 }
 
-// UDPSender is a Sender implementation that can write payload to the network
-// Address and reuses single system socket. It uses UDP packets to send data.
-type UDPSender struct {
-	conn *net.UDPConn
-}
-
-// Send sends given payload to passed address. Data is sent using UDP packets.
-// It returns number of bytes sent and error - if there was any.
-func (s *UDPSender) Send(addr Address, payload []byte) (int, error) {
-	if s.conn == nil {
-		conn, err := net.ListenUDP("udp", nil)
-		if err != nil {
-			return 0, fmt.Errorf("could not create connection: %s", err)
-		}
-		s.conn = conn
-	}
-
-	udpAddr, err := addressToUDP(addr)
-	if err != nil {
-		return 0, fmt.Errorf("invalid address %s: %s", addr, err)
-	}
-
-	n, err := s.conn.WriteTo(payload, &udpAddr)
-	if err != nil {
-		return 0, fmt.Errorf("could not sent payload to %s: %s", addr, err)
-	}
-	return n, nil
-}
-
-// Release frees system socket used by sender.
-func (s *UDPSender) Release() error {
-	if s.conn == nil {
-		return nil
-	}
-	err := s.conn.Close()
-	s.conn = nil
-	return err
-}
-
-func addressToUDP(addr Address) (net.UDPAddr, error) {
-	host, p, err := net.SplitHostPort(string(addr))
-	if err != nil {
-		return net.UDPAddr{}, err
-	}
-
-	port, err := strconv.Atoi(p)
-	if err != nil {
-		return net.UDPAddr{}, err
-	}
-
-	return net.UDPAddr{IP: net.ParseIP(host), Port: port}, nil
-}
-
 // DiscoveryServiceInstanceProvider returns InstanceProvider that is updated with
 // list of instances in interval
 func DiscoveryServiceInstanceProvider(serviceName string, interval time.Duration, client DiscoveryServiceClient) InstanceProvider {
@@ -184,12 +131,8 @@ func (c *consulDiscoveryServiceClient) GetAddrsByName(serviceName string) ([]Add
 
 	instances := make([]Address, len(services))
 	for i, instance := range services {
-		instances[i] = Address(hostPort(instance.ServiceAddress, instance.ServicePort))
+		instances[i] = Address(net.JoinHostPort(instance.ServiceAddress, strconv.Itoa(instance.ServicePort)))
 	}
 
 	return instances, nil
-}
-
-func hostPort(host string, port int) Address {
-	return Address(fmt.Sprintf("%s:%d", host, port))
 }
