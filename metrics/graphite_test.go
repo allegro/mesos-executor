@@ -28,7 +28,6 @@ func TestIfNotFailsToSetupGraphiteWithValidConfig(t *testing.T) {
 }
 
 func TestIfBuildsCorrectMetricsPrefix(t *testing.T) {
-	metricsID = "uuid"
 	testCases := []struct {
 		hostname       string
 		expectedPrefix string
