@@ -28,7 +28,6 @@ func TestIfNotFailsToSetupGraphiteWithValidConfig(t *testing.T) {
 }
 
 func TestIfBuildsCorrectMetricsPrefix(t *testing.T) {
-	metricsUUID = "uuid"
 	testCases := []struct {
 		hostname       string
 		expectedPrefix string
@@ -42,7 +41,7 @@ func TestIfBuildsCorrectMetricsPrefix(t *testing.T) {
 			os.Setenv("MESOS_HOSTNAME", tc.hostname)
 			defer os.Unsetenv("MESOS_HOSTNAME")
 
-			actualPrefix := buildUniquePrefix("basePrefix")
+			actualPrefix := buildUniquePrefix("basePrefix", "uuid")
 			assert.Equal(t, tc.expectedPrefix, actualPrefix)
 		})
 	}
