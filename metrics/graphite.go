@@ -18,7 +18,6 @@ const graphiteConfigEnvPrefix = "allegro_executor_graphite"
 
 var metricsID string
 
-
 // Init processes the environment in search of Graphite configuration and sets up a connection
 func Init(id string) {
 	var cfg GraphiteConfig
