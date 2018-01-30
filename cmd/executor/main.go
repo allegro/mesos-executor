@@ -15,7 +15,7 @@ import (
 	"github.com/allegro/mesos-executor/hook"
 	"github.com/allegro/mesos-executor/hook/consul"
 	"github.com/allegro/mesos-executor/hook/vaas"
-	_ "github.com/allegro/mesos-executor/metrics"
+	"github.com/allegro/mesos-executor/metrics"
 	"github.com/allegro/mesos-executor/runenv"
 )
 
@@ -114,6 +114,7 @@ func main() {
 		log.WithError(err).Fatal("Failed to load Mesos configuration")
 	}
 	Config.MesosConfig = cfg
+	metrics.Init(cfg.ExecutorID)
 	exec := executor.NewExecutor(Config, createHooks()...)
 	if err := exec.Start(); err != nil {
 		log.WithError(err).Fatal("Executor exited with error")

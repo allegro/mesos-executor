@@ -8,7 +8,6 @@ import (
 
 	"github.com/cyberdelia/go-metrics-graphite"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/pborman/uuid"
 	"github.com/rcrowley/go-metrics"
 	log "github.com/sirupsen/logrus"
 
@@ -17,10 +16,12 @@ import (
 
 const graphiteConfigEnvPrefix = "allegro_executor_graphite"
 
-var metricsUUID = uuid.New()
+var metricsID string
 
-func init() {
+// Init processes the environment in search of Graphite configuration and sets up a connection
+func Init(id string) {
 	var cfg GraphiteConfig
+	metricsID = id
 	if err := envconfig.Process(graphiteConfigEnvPrefix, &cfg); err != nil {
 		log.WithError(err).Fatal("Invalid graphite configuration")
 	}
@@ -28,7 +29,7 @@ func init() {
 		if err := SetupGraphite(cfg); err != nil {
 			log.WithError(err).Fatal("Invalid graphite configuration")
 		} else {
-			log.Infof("Metrics will be sent to Graphite with UUID: %s", metricsUUID)
+			log.Infof("Metrics will be sent to Graphite with UUID: %s", metricsID)
 		}
 	} else {
 		log.Info("No metric storage specified - using stderr to periodically print metrics")
@@ -59,7 +60,7 @@ func buildUniquePrefix(basePrefix string) string {
 	if err != nil {
 		log.Fatalf("Unable to get hostname for metrics key: %s", err)
 	}
-	return fmt.Sprintf("%s.%s.%s", basePrefix, normalizeValue(hostname), metricsUUID)
+	return fmt.Sprintf("%s.%s.%s", basePrefix, normalizeValue(hostname), metricsID)
 }
 
 func normalizeValue(value string) string {
