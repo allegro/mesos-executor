@@ -21,7 +21,7 @@ var metricsID string
 // Init processes the environment in search of Graphite configuration and sets up a connection
 func Init(id string) {
 	var cfg GraphiteConfig
-	metricsID = id
+	metricsID = normalizeValue(id)
 	if err := envconfig.Process(graphiteConfigEnvPrefix, &cfg); err != nil {
 		log.WithError(err).Fatal("Invalid graphite configuration")
 	}
