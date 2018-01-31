@@ -29,7 +29,7 @@ func Init(id string) {
 		if err := SetupGraphite(cfg); err != nil {
 			log.WithError(err).Fatal("Invalid graphite configuration")
 		} else {
-			log.Infof("Metrics will be sent to Graphite with UUID: %s", metricsID)
+			log.Infof("Metrics will be sent to Graphite with UUID: %s", normalizeValue(metricsID))
 		}
 	} else {
 		log.Info("No metric storage specified - using stderr to periodically print metrics")
@@ -60,7 +60,7 @@ func buildUniquePrefix(basePrefix string) string {
 	if err != nil {
 		log.Fatalf("Unable to get hostname for metrics key: %s", err)
 	}
-	return fmt.Sprintf("%s.%s.%s", basePrefix, normalizeValue(hostname), metricsID)
+	return fmt.Sprintf("%s.%s.%s", basePrefix, normalizeValue(hostname), normalizeValue(metricsID))
 }
 
 func normalizeValue(value string) string {
