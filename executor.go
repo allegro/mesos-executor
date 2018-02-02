@@ -254,7 +254,7 @@ func (e *Executor) handleConnError(err error) {
 func (e *Executor) taskEventLoop() {
 	defer e.contextCancel()
 
-	var taskInfo mesos.TaskInfo
+	var taskInfo *mesos.TaskInfo
 	var cmd Command
 
 	fireHealthyHook := true
@@ -264,9 +264,10 @@ func (e *Executor) taskEventLoop() {
 		case Subscribed:
 			e.framework = event.subscribed.GetFrameworkInfo()
 		case Launch:
-			taskInfo = event.launch.GetTask()
+			t := event.launch.GetTask()
+			taskInfo = &t
 			var err error
-			cmd, err = e.launchTask(taskInfo)
+			cmd, err = e.launchTask(t)
 			if err != nil {
 				msg := fmt.Sprintf("Cannot launch task: %s", err)
 				e.stateUpdater.UpdateWithOptions(taskInfo.GetTaskID(), mesos.TASK_FAILED, state.OptionalInfo{Message: &msg})
@@ -277,7 +278,7 @@ func (e *Executor) taskEventLoop() {
 				fireHealthyHook = false
 				event := hook.Event{
 					Type:     hook.AfterTaskHealthyEvent,
-					TaskInfo: mesosutils.TaskInfo{TaskInfo: taskInfo},
+					TaskInfo: mesosutils.TaskInfo{TaskInfo: *taskInfo},
 				}
 				if _, err := e.hookManager.HandleEvent(event, false); err != nil { // do not ignore errors here, so we will not have an incorrectly configured service
 					log.WithError(err).Errorf("Error calling after task healthy hooks. Stopping the command.")
@@ -316,8 +317,12 @@ func (e *Executor) taskEventLoop() {
 		case Kill:
 			e.shutDown(taskInfo, cmd)
 			message := "Task killed due to receiving an event from Mesos agent"
+			taskID := mesos.TaskID{Value: "MISSING"}
+			if taskInfo != nil {
+				taskID = taskInfo.GetTaskID()
+			}
 			e.stateUpdater.UpdateWithOptions(
-				taskInfo.GetTaskID(),
+				taskID,
 				mesos.TASK_KILLED,
 				state.OptionalInfo{
 					Message: &message,
@@ -435,7 +440,11 @@ func (e *Executor) checkCert(cert *x509.Certificate) error {
 	return nil
 }
 
-func (e *Executor) shutDown(taskInfo mesos.TaskInfo, cmd Command) {
+func (e *Executor) shutDown(taskInfo *mesos.TaskInfo, cmd Command) {
+	if taskInfo == nil || cmd == nil {
+		return
+	}
+
 	for _, capability := range e.framework.GetCapabilities() {
 		if capability.GetType() == mesos.FrameworkInfo_Capability_TASK_KILLING_STATE {
 			e.stateUpdater.Update(taskInfo.GetTaskID(), mesos.TASK_KILLING)
@@ -448,7 +457,7 @@ func (e *Executor) shutDown(taskInfo mesos.TaskInfo, cmd Command) {
 	}
 	beforeTerminateEvent := hook.Event{
 		Type:     hook.BeforeTerminateEvent,
-		TaskInfo: mesosutils.TaskInfo{TaskInfo: taskInfo},
+		TaskInfo: mesosutils.TaskInfo{TaskInfo: *taskInfo},
 	}
 	_, _ = e.hookManager.HandleEvent(beforeTerminateEvent, true) // ignore errors here, so every hook will have a chance to be called
 	cmd.Stop(gracePeriod)                                        // blocking call

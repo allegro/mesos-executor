@@ -167,10 +167,12 @@ func TestIfFiresAfterTaskHealthyOnlyOnFirstHealthyEvent(t *testing.T) {
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
 	stateUpdater := new(mockUpdater)
+	stateUpdater.On("Update", mock.AnythingOfType("mesos.TaskID"), mesos.TASK_STARTING)
+	stateUpdater.On("Update", mock.AnythingOfType("mesos.TaskID"), mesos.TASK_RUNNING)
 	stateUpdater.On("UpdateWithOptions",
 		mock.AnythingOfType("mesos.TaskID"),
 		mesos.TASK_RUNNING,
-		mock.AnythingOfType("state.OptionalInfo")).Twice()
+		mock.AnythingOfType("state.OptionalInfo"))
 
 	exec := new(Executor)
 	exec.events = make(chan Event)
@@ -179,10 +181,16 @@ func TestIfFiresAfterTaskHealthyOnlyOnFirstHealthyEvent(t *testing.T) {
 	exec.stateUpdater = stateUpdater
 	go exec.taskEventLoop()
 
+	exec.handleMesosEvent(launchEventWithCommand(infiniteCommand))
+
 	mockedHook := new(mockHook)
 	mockedHook.On("HandleEvent", mock.MatchedBy(func(event hook.Event) bool {
 		return event.Type == hook.AfterTaskHealthyEvent
-	})).Return(hook.Env{}, nil).Once()
+	})).Return(hook.Env{}, nil)
+	mockedHook.On("HandleEvent", mock.MatchedBy(func(event hook.Event) bool {
+		return event.Type == hook.BeforeTaskStartEvent
+	})).Return(hook.Env{}, nil)
+
 	exec.hookManager.Hooks = append(exec.hookManager.Hooks, mockedHook)
 
 	exec.events <- Event{
@@ -191,8 +199,12 @@ func TestIfFiresAfterTaskHealthyOnlyOnFirstHealthyEvent(t *testing.T) {
 	exec.events <- Event{
 		Type: Healthy,
 	}
+	time.Sleep(time.Second)
 
-	mockedHook.AssertExpectations(t)
+	stateUpdater.AssertNumberOfCalls(t, "UpdateWithOptions", 2)
+	mockedHook.AssertCalled(t, "HandleEvent", mock.MatchedBy(func(event hook.Event) bool {
+		return event.Type == hook.AfterTaskHealthyEvent
+	}))
 }
 
 func TestIfStopsAfterTaskHealthyEventHookFail(t *testing.T) {
@@ -338,6 +350,27 @@ func TestCertificateCheckScheduleTaskKillBeforeCertificateExpires(t *testing.T) 
 	event := <-exec.events
 
 	assert.Equal(t, Event{Type: FailedDueToExpiredCertificate, Message: "Certificate expired"}, event)
+}
+
+func TestIfNotPanicsWhenKillWithoutLaunch(t *testing.T) {
+	stateUpdater := new(mockUpdater)
+	stateUpdater.On("UpdateWithOptions",
+		mock.AnythingOfType("mesos.TaskID"),
+		mesos.TASK_KILLED,
+		mock.AnythingOfType("state.OptionalInfo")).Once()
+	events := make(chan Event, 1)
+
+	exec := &Executor{
+		contextCancel: func() {},
+		events:        events,
+		stateUpdater:  stateUpdater,
+	}
+
+	assert.NotPanics(t, func() {
+		events <- Event{Type: Kill}
+		exec.taskEventLoop()
+		stateUpdater.AssertExpectations(t)
+	})
 }
 
 type mockClock struct {

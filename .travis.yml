@@ -1,12 +1,13 @@
 language: go
 go:
   - 1.9.x
-  - master
 
 jobs:
   include:
-    - script: make travis-ci
-    - stage: GitHub Release
+    - stage: test
+      script: make travis-ci
+    - stage: release
+      if: tag =~ ^v AND branch = master
       script: make release
       deploy:
         provider: releases
