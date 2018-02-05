@@ -160,7 +160,7 @@ func LogstashAppenderFromEnv() (Appender, error) {
 	log.Infof("Protocol                 = %s", config.Protocol)
 	log.Infof("Address                  = %s", config.Address)
 	log.Infof("DiscoveryRefreshInterval = %s", config.DiscoveryRefreshInterval)
-	log.Infof("DiscoveryServiceName     = %s", config.DiscoveryRefreshInterval)
+	log.Infof("DiscoveryServiceName     = %s", config.DiscoveryServiceName)
 	log.Infof("RateLimit                = %d", config.RateLimit)
 	log.Infof("SizeLimit                = %d", config.SizeLimit)
 	log.Infof("TCPKeepAlive             = %s", config.TCPKeepAlive)
