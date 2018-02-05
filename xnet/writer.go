@@ -50,6 +50,7 @@ func (r *roundRobinWriter) Write(byte []byte) (int, error) {
 
 	select {
 	case newInstances := <-r.provider:
+		log.WithField("instances", newInstances).Info("Received new instances for RoundRobinWriter")
 		r.updateInstances(newInstances)
 		return r.write(byte)
 	default:
