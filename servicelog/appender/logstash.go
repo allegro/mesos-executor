@@ -155,6 +155,17 @@ func LogstashAppenderFromEnv() (Appender, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to get config from env: %s", err)
 	}
+
+	log.Info("Initializing Logstash appender with following configuration:")
+	log.Infof("Protocol                 = %s", config.Protocol)
+	log.Infof("Address                  = %s", config.Address)
+	log.Infof("DiscoveryRefreshInterval = %s", config.DiscoveryRefreshInterval)
+	log.Infof("DiscoveryServiceName     = %s", config.DiscoveryRefreshInterval)
+	log.Infof("RateLimit                = %d", config.RateLimit)
+	log.Infof("SizeLimit                = %d", config.SizeLimit)
+	log.Infof("TCPKeepAlive             = %s", config.TCPKeepAlive)
+	log.Infof("TCPTimeout               = %s", config.TCPTimeout)
+
 	var baseWriter io.Writer
 	if len(config.DiscoveryServiceName) > 0 {
 		dialer := &net.Dialer{
