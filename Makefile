@@ -16,7 +16,7 @@ COVERAGEDIR := $(BUILD_FOLDER)/test-results
 CURRENT_DIR = $(shell pwd)
 PATH := $(CURRENT_DIR)/bin:$(PATH)
 
-.PHONY: clean test all build release deps lint lint-deps \
+.PHONY: clean test all build package deps lint lint-deps \
 		generate-source generate-source-deps
 
 all: lint test build
@@ -44,7 +44,7 @@ lint-deps:
 	@which gometalinter.v2 > /dev/null || \
 		(go get -u -v gopkg.in/alecthomas/gometalinter.v2 && gometalinter.v2 --install)
 
-release: clean build
+package: build
 	zip -j $(BUILD_FOLDER)/executor-linux-amd64.zip $(BUILD_FOLDER)/executor
 	chmod 0755 $(BUILD_FOLDER)/executor-linux-amd64.zip
 	chmod 0777 $(BUILD_FOLDER)
@@ -70,4 +70,4 @@ test-deps:
 	@which goveralls > /dev/null || \
 		(go get github.com/mattn/goveralls)
 
-travis-ci: lint build coveralls
+travis-ci: lint build coveralls package
