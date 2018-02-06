@@ -2,12 +2,15 @@ language: go
 go:
   - 1.9.x
 
+stages:
+  - name: test
+  - name: release
+
 jobs:
   include:
     - stage: test
       script: make travis-ci
     - stage: release
-      if: tag =~ ^v AND branch = master
       script: make release
       deploy:
         provider: releases
