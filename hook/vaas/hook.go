@@ -73,7 +73,7 @@ func (sh *Hook) RegisterBackend(taskInfo mesosutils.TaskInfo) error {
 	ports := taskInfo.GetPorts()
 
 	if len(ports) < 1 {
-		return errors.New("Service has no ports available")
+		return errors.New("service has no ports available")
 	}
 
 	var initialWeight *int
