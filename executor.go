@@ -30,6 +30,9 @@ import (
 	"github.com/allegro/mesos-executor/state"
 )
 
+// EnvironmentPrefix is a prefix for environmental configuration
+const EnvironmentPrefix = "allegro_executor"
+
 // Config settable from the environment
 type Config struct {
 	// Sets logging level to `debug` when true, `info` otherwise
@@ -474,6 +477,7 @@ func taskExitToEvent(exitStateChan <-chan TaskExitState, events chan<- Event) {
 }
 
 // Hack: For Marathon #4952
+// https://jira.mesosphere.com/browse/MARATHON-4210
 func prepareCommandInfo(commandInfo *mesos.CommandInfo) {
 	marathonPrefix := fmt.Sprintf("chmod ug+rx '%s' && exec '%s' ", os.Args[0], os.Args[0])
 	commandLine := strings.TrimPrefix(commandInfo.GetValue(), marathonPrefix)

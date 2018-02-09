@@ -19,8 +19,6 @@ import (
 	"github.com/allegro/mesos-executor/runenv"
 )
 
-const environmentPrefix = "allegro_executor"
-
 // Version designates the version of application.
 var Version string
 
@@ -32,7 +30,7 @@ var debug = *flag.Bool("debug", false, "Forces executor debug mode")
 func init() {
 	flag.Parse()
 
-	if err := envconfig.Process(environmentPrefix, &Config); err != nil {
+	if err := envconfig.Process(executor.EnvironmentPrefix, &Config); err != nil {
 		log.WithError(err).Fatal("Failed to load executor configuration")
 	}
 
@@ -87,7 +85,7 @@ func initSentry(config executor.Config) error {
 
 func createHooks() []hook.Hook {
 	var consulConfig consul.Config
-	if err := envconfig.Process(environmentPrefix, &consulConfig); err != nil {
+	if err := envconfig.Process(executor.EnvironmentPrefix, &consulConfig); err != nil {
 		log.WithError(err).Fatal("Failed to load Consul hook configuration")
 	}
 	consulHook, err := consul.NewHook(consulConfig)
@@ -96,7 +94,7 @@ func createHooks() []hook.Hook {
 	}
 
 	var vaasConfig vaas.Config
-	if err := envconfig.Process(environmentPrefix, &vaasConfig); err != nil {
+	if err := envconfig.Process(executor.EnvironmentPrefix, &vaasConfig); err != nil {
 		log.WithError(err).Fatal("Failed to load VaaS hook configuration")
 	}
 	vaasHook, err := vaas.NewHook(vaasConfig)
