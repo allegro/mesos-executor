@@ -7,16 +7,17 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
 
-	"github.com/mesos/mesos-go/api/v1/lib"
 	log "github.com/sirupsen/logrus"
 
 	osutil "github.com/allegro/mesos-executor/os"
 	"github.com/allegro/mesos-executor/servicelog"
 	"github.com/allegro/mesos-executor/servicelog/appender"
 	"github.com/allegro/mesos-executor/servicelog/scraper"
+	"github.com/mesos/mesos-go/api/v1/lib"
 )
 
 // TaskExitState is a type describing reason of program execution interuption.
@@ -136,7 +137,7 @@ func NewCommand(commandInfo mesos.CommandInfo, env []string, options ...func(*ex
 	//		similar to how POSIX exec families launch processes (i.e.,
 	//		execlp(value, arguments(0), arguments(1), ...)).
 	cmd := exec.Command("sh", "-c", commandInfo.GetValue()) // #nosec
-	cmd.Env = combineExecutorAndTaskEnv(env, commandInfo.GetEnvironment())
+	cmd.Env = envWithoutExecutorConfig()
 	for _, option := range options {
 		if err := option(cmd); err != nil {
 			return nil, fmt.Errorf("invalid config option: %s", err)
@@ -171,13 +172,16 @@ func ScrapCmdOutput(s scraper.Scraper, a appender.Appender, extenders ...service
 	}
 }
 
-func combineExecutorAndTaskEnv(env []string, mesosEnv *mesos.Environment) []string {
-	var combined []string
-	combined = append(combined, env...)
+// envWithoutExecutorConfig returns os.Environ without executor specific entries.
+// Marathon does not support custom executor env and all task env are passed
+// as executor env. This means environment are setup before executor startup.
+func envWithoutExecutorConfig() (env []string) {
+	for _, variable := range os.Environ() {
+		if !strings.HasPrefix(variable, strings.ToUpper(EnvironmentPrefix)) {
+			env = append(env, variable)
+		} else {
 
-	for _, variable := range mesosEnv.GetVariables() {
-		combined = append(combined, fmt.Sprintf("%s=%s", variable.Name, variable.Value))
+		}
 	}
-
-	return combined
+	return env
 }
