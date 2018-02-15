@@ -137,7 +137,7 @@ func NewCommand(commandInfo mesos.CommandInfo, env []string, options ...func(*ex
 	//		similar to how POSIX exec families launch processes (i.e.,
 	//		execlp(value, arguments(0), arguments(1), ...)).
 	cmd := exec.Command("sh", "-c", commandInfo.GetValue()) // #nosec
-	cmd.Env = envWithoutExecutorConfig()
+	cmd.Env = append(envWithoutExecutorConfig(), env...)
 	for _, option := range options {
 		if err := option(cmd); err != nil {
 			return nil, fmt.Errorf("invalid config option: %s", err)

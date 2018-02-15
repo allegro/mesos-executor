@@ -21,7 +21,7 @@ func TestIfNewCancellableCommandReturnsCommandWithoutExecutorEnv(t *testing.T) {
 	defer os.Unsetenv("_ALLEGRO_EXECUTOR_")
 
 	commandInfo := newCommandInfo("./sleep 100", "ignored", false, []string{"ignored"})
-	command, err := NewCommand(commandInfo, nil)
+	command, err := NewCommand(commandInfo, []string{"ALLEGRO_EXECUTOR_NOT_REMOVED=y", "SOME_ENV=x"})
 	cmd := command.(*cancellableCommand).cmd
 
 	assert.NoError(t, err)
@@ -30,16 +30,17 @@ func TestIfNewCancellableCommandReturnsCommandWithoutExecutorEnv(t *testing.T) {
 	assert.True(t, cmd.SysProcAttr.Setpgid, "should have pgid flag set to true")
 
 	assert.NotContains(t, cmd.Env, "ALLEGRO_EXECUTOR_TEST_1=x")
-	assert.Contains(t, cmd.Env, "allegro_executor_TEST_2=y")
-	assert.Contains(t, cmd.Env, "TEST=z")
-	assert.Contains(t, cmd.Env, "_ALLEGRO_EXECUTOR_=0")
+
+	for _, e := range []string{"allegro_executor_TEST_2=y", "TEST=z", "_ALLEGRO_EXECUTOR_=0", "ALLEGRO_EXECUTOR_NOT_REMOVED=y", "SOME_ENV=x"} {
+		assert.Contains(t, cmd.Env, e)
+	}
 }
 
 func newCommandInfo(command, user string, shell bool, args []string) mesos.CommandInfo {
 	return mesos.CommandInfo{
-		Shell:       &shell,
-		Value:       &command,
-		Arguments:   args,
-		User:        &user,
+		Shell:     &shell,
+		Value:     &command,
+		Arguments: args,
+		User:      &user,
 	}
 }
