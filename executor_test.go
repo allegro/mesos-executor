@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"testing"
+
 	"time"
 
 	mesos "github.com/mesos/mesos-go/api/v1/lib"
@@ -173,15 +174,20 @@ func TestIfFiresAfterTaskHealthyOnlyOnFirstHealthyEvent(t *testing.T) {
 		mock.AnythingOfType("mesos.TaskID"),
 		mesos.TASK_RUNNING,
 		mock.AnythingOfType("state.OptionalInfo"))
+	stateUpdater.On("UpdateWithOptions",
+		mock.AnythingOfType("mesos.TaskID"),
+		mesos.TASK_KILLED,
+		mock.AnythingOfType("state.OptionalInfo")).Once()
 
 	exec := new(Executor)
-	exec.events = make(chan Event)
+	exec.events = make(chan Event, 3)
 	exec.context = ctx
 	exec.contextCancel = ctxCancel
 	exec.stateUpdater = stateUpdater
 	go exec.taskEventLoop()
 
 	exec.handleMesosEvent(launchEventWithCommand(infiniteCommand))
+	defer exec.handleMesosEvent(killEvent()) // ensure we will not have any child processes after test ends
 
 	mockedHook := new(mockHook)
 	mockedHook.On("HandleEvent", mock.MatchedBy(func(event hook.Event) bool {
@@ -189,6 +195,9 @@ func TestIfFiresAfterTaskHealthyOnlyOnFirstHealthyEvent(t *testing.T) {
 	})).Return(hook.Env{}, nil)
 	mockedHook.On("HandleEvent", mock.MatchedBy(func(event hook.Event) bool {
 		return event.Type == hook.BeforeTaskStartEvent
+	})).Return(hook.Env{}, nil)
+	mockedHook.On("HandleEvent", mock.MatchedBy(func(event hook.Event) bool {
+		return event.Type == hook.BeforeTerminateEvent
 	})).Return(hook.Env{}, nil)
 
 	exec.hookManager.Hooks = append(exec.hookManager.Hooks, mockedHook)
