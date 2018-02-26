@@ -136,6 +136,7 @@ func NewExecutor(cfg Config, hooks ...hook.Hook) *Executor {
 	log.Infof("APIPath                     = %s", cfg.APIPath)
 	log.Infof("Debug                       = %t", cfg.Debug)
 	log.Infof("ServicelogIgnoreKeys        = %s", cfg.ServicelogIgnoreKeys)
+	log.Infof("StateUpdateBufferSize       = %d", cfg.StateUpdateBufferSize)
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	return &Executor{
@@ -181,9 +182,11 @@ SUBSCRIBE_LOOP:
 		case <-recoveryTimeout.C:
 			return fmt.Errorf("failed to re-establish subscription with agent within %v, aborting", e.config.MesosConfig.RecoveryTimeout)
 		case <-e.context.Done():
+			log.Debug("Executor context cancelled, breaking subscribe loop")
 			break SUBSCRIBE_LOOP
 		case <-shouldConnect:
 			subscribe := calls.Subscribe(nil, e.stateUpdater.GetUnacknowledged()).With(callOptions...)
+			log.WithField("SubscribeCall", subscribe).Debug("Subscribing to Mesos agent")
 			resp, err := httpClient.Do(subscribe, httpcli.Close(true))
 			if err == nil {
 				err = e.eventLoop(resp.Decoder())
@@ -216,7 +219,9 @@ func (e *Executor) eventLoop(decoder encoding.Decoder) (err error) {
 			return nil
 		default:
 			var event executor.Event
+			log.Debug("Decoding event from Mesos agent")
 			if err = decoder.Invoke(&event); err == nil {
+				log.WithField("Event", event).Debug("Handling Mesos event")
 				err = e.handleMesosEvent(event)
 			}
 		}
@@ -226,6 +231,7 @@ func (e *Executor) eventLoop(decoder encoding.Decoder) (err error) {
 
 func (e *Executor) handleMesosEvent(event executor.Event) error {
 	log.WithField("Type", event.Type).Info("Event received")
+	log.WithField("Event", event).Debug("Received event data")
 
 	switch event.GetType() {
 	case executor.Event_SUBSCRIBED:
