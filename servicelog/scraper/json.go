@@ -12,6 +12,7 @@ import (
 
 // JSON is a scraper for logs represented as JSON objects.
 type JSON struct {
+	KeyFilter Filter
 }
 
 // StartScraping starts scraping logs in JSON format from given reader and sends
@@ -27,6 +28,13 @@ func (j *JSON) StartScraping(reader io.Reader) <-chan servicelog.Entry {
 			if err := json.Unmarshal(scanner.Bytes(), &logEntry); err != nil {
 				log.WithError(err).Warn("Unable to unmarshal log entry - skipping line")
 				continue
+			}
+			if j.KeyFilter != nil {
+				for key := range logEntry {
+					if j.KeyFilter.Match([]byte(key)) {
+						delete(logEntry, key)
+					}
+				}
 			}
 			logEntries <- logEntry
 		}

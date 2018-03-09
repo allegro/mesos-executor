@@ -408,7 +408,8 @@ func (e *Executor) createOptionsForLogstashServiceLogScrapping(taskInfo mesos.Ta
 	for _, ignoredKey := range e.config.ServicelogIgnoreKeys {
 		values = append(values, []byte(ignoredKey))
 	}
-	scr := &scraper.JSON{}
+	filter := scraper.ValueFilter{Values: values}
+	scr := &scraper.JSON{KeyFilter: filter}
 	apr, err := appender.LogstashAppenderFromEnv()
 	if err != nil {
 		return nil, fmt.Errorf("cannot configure service log scraping: %s", err)
