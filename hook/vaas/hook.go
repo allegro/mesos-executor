@@ -110,29 +110,13 @@ func (sh *Hook) RegisterBackend(taskInfo mesosutils.TaskInfo) error {
 	}
 
 	if taskInfo.GetLabelValue(vaasAsyncLabelKey) == "true" {
-		taskURI, err := sh.client.AddBackend(backend, true)
-		if err != nil {
-			return fmt.Errorf("could not register with VaaS director: %s", err)
-		}
-		log.Info("Waiting for successful Varnish configuration change...")
-		sh.backendID = backend.ID
-
-		task := &Task{
-			ResourceURI: taskURI,
-			Status:      StatusPending,
-		}
-		err = sh.watchTaskStatus(task)
-		if err != nil {
-			return fmt.Errorf("could not register with VaaS director: %s", err)
-		}
-	} else {
-		_, err := sh.client.AddBackend(backend, false)
-
-		if err != nil {
-			return err
-		}
-		sh.backendID = backend.ID
+		return fmt.Errorf("async VaaS registration is no longer supported")
 	}
+	_, err = sh.client.AddBackend(backend)
+	if err != nil {
+		return err
+	}
+	sh.backendID = backend.ID
 
 	log.WithField(vaasBackendIDKey, *sh.backendID).Info("Registered backend with VaaS")
 
@@ -160,40 +144,6 @@ func (sh *Hook) DeregisterBackend(_ mesosutils.TaskInfo) error {
 	log.Infof("backendID not set - not deleting backend from VaaS")
 
 	return nil
-}
-
-func (sh *Hook) watchTaskStatus(task *Task) (err error) {
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	timer := time.NewTimer(sh.asyncTimeout)
-	defer timer.Stop()
-
-	for {
-		select {
-		case <-timer.C:
-			log.Warn("VaaS registration timed out, will attempt cleanup...")
-
-			return errors.New("VaaS registration timed out")
-		case <-ticker.C:
-			err = sh.client.TaskStatus(task)
-
-			log.Debugf("Checking VaaS task status on %s", task.ResourceURI)
-			if err != nil {
-				log.Warnf("Error getting VaaS task status: %s", err)
-				continue
-			}
-			log.Debugf("Received status: %s, info: %s", task.Status, task.Info)
-
-			switch task.Status {
-			case StatusFailure:
-				return fmt.Errorf("registration in VaaS failed: %s", err)
-			case StatusSuccess:
-				log.Info("Registered backend in VaaS")
-				return nil
-			}
-		}
-	}
 }
 
 // HandleEvent calls appropriate hook functions that correspond to supported

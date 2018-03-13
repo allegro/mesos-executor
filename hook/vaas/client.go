@@ -10,29 +10,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// TaskStatus is a type representing task status from VaaS API responses.
-type TaskStatus string
-
 const (
 	apiPrefixPath   = "/api/v0.1"
 	apiBackendPath  = apiPrefixPath + "/backend/"
 	apiDcPath       = apiPrefixPath + "/dc/"
 	apiDirectorPath = apiPrefixPath + "/director/"
-
-	// StatusPending Task state is unknown (assumed pending since you know the id).
-	StatusPending = TaskStatus("PENDING")
-	// StatusReceived Task was received by a worker (only used in events).
-	StatusReceived = TaskStatus("RECEIVED")
-	// StatusStarted Task was started by a worker (task_track_started).
-	StatusStarted = TaskStatus("STARTED")
-	// StatusSuccess Task succeeded
-	StatusSuccess = TaskStatus("SUCCESS")
-	// StatusFailure Task failed
-	StatusFailure = TaskStatus("FAILURE")
-	// StatusRevoked Task was revoked.
-	StatusRevoked = TaskStatus("REVOKED")
-	// StatusRetry Task is waiting for retry.
-	StatusRetry = TaskStatus("RETRY")
 )
 
 const (
@@ -94,18 +76,16 @@ type Meta struct {
 
 // Task represents JSON structure of a VaaS task in API.
 type Task struct {
-	Info        string     `json:"info,omitempty"`
-	ResourceURI string     `json:"resource_uri,omitempty"`
-	Status      TaskStatus `json:"status,omitempty"`
+	Info        string `json:"info,omitempty"`
+	ResourceURI string `json:"resource_uri,omitempty"`
 }
 
 // Client is an interface for VaaS API.
 type Client interface {
 	FindDirectorID(string) (int, error)
-	AddBackend(*Backend, bool) (string, error)
+	AddBackend(*Backend) (string, error)
 	DeleteBackend(int) error
 	GetDC(string) (*DC, error)
-	TaskStatus(*Task) error
 }
 
 // DefaultClient is a REST client for VaaS API.
@@ -142,14 +122,10 @@ func (c *defaultClient) FindDirectorID(name string) (int, error) {
 }
 
 // AddBackend adds backend in VaaS director.
-func (c *defaultClient) AddBackend(backend *Backend, async bool) (string, error) {
+func (c *defaultClient) AddBackend(backend *Backend) (string, error) {
 	request, err := c.newRequest("POST", c.host+apiBackendPath, backend)
 	if err != nil {
 		return "", err
-	}
-
-	if async {
-		request.Header.Set("Prefer", "respond-async")
 	}
 
 	response, err := c.doRequest(request, backend)
@@ -203,19 +179,6 @@ func (c *defaultClient) GetDC(name string) (*DC, error) {
 	}
 
 	return nil, fmt.Errorf("no DC with name %s found", name)
-}
-
-func (c *defaultClient) TaskStatus(task *Task) error {
-	request, err := c.newRequest("GET", c.host+task.ResourceURI, nil)
-	if err != nil {
-		return err
-	}
-
-	if _, err := c.doRequest(request, task); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (c *defaultClient) newRequest(method, url string, body interface{}) (*http.Request, error) {
