@@ -110,11 +110,12 @@ func (sh *Hook) RegisterBackend(taskInfo mesosutils.TaskInfo) error {
 	}
 
 	if taskInfo.GetLabelValue(vaasAsyncLabelKey) == "true" {
-		return fmt.Errorf("async VaaS registration is no longer supported")
+		log.Warn("Async VaaS registration is no longer supported")
 	}
 	_, err = sh.client.AddBackend(backend)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to register backend with VaaS, %s: %d, reason: %s",
+			vaasBackendIDKey, *sh.backendID, err)
 	}
 	sh.backendID = backend.ID
 

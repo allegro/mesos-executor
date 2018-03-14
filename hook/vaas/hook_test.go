@@ -229,26 +229,6 @@ func TestDoNotRegisterVaasBackendWhenDirectorNotSet(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestDoNotRegisterAsyncVaas(t *testing.T) {
-	_ = os.Setenv("CLOUD_DC", "dc6")
-	defer os.Unsetenv("CLOUD_DC")
-
-	mockClient := new(MockClient)
-	serviceHook := Hook{client: mockClient}
-	mockDC := DC{
-		ID:          1,
-		ResourceURI: "dc/6",
-	}
-
-	mockClient.On("GetDC", "dc6").Return(&mockDC, nil)
-	mockClient.On("FindDirectorID", "abc456").Return(456, nil)
-
-	tag := "true"
-	err := serviceHook.RegisterBackend(prepareTaskInfoWithDirector("abc456", mesos.Label{Key: vaasAsyncLabelKey, Value: &tag}))
-	require.EqualError(t, err, "async VaaS registration is no longer supported")
-	mockClient.AssertExpectations(t)
-}
-
 func TestIfNoErrorOnUnsupportedEvent(t *testing.T) {
 	h, err := NewHook(Config{})
 
