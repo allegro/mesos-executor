@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/mesos/mesos-go/api/v1/lib"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +24,7 @@ func (m *MockClient) FindDirectorID(name string) (int, error) {
 	return args.Int(0), args.Error(1)
 }
 
-func (m *MockClient) AddBackend(backend *Backend, async bool) (string, error) {
+func (m *MockClient) AddBackend(backend *Backend) (string, error) {
 	args := m.Called(backend)
 
 	backendId := 123
@@ -48,20 +47,6 @@ func (m *MockClient) GetDC(name string) (*DC, error) {
 	}
 
 	return args.Get(0).(*DC), args.Error(1)
-}
-
-func (m *MockClient) TaskStatus(task *Task) error {
-	args := m.Called(task)
-
-	if task.Status == StatusPending {
-		task.Status = StatusReceived
-	}
-
-	if task.Status == StatusReceived {
-		task.Status = StatusSuccess
-	}
-
-	return args.Error(0)
 }
 
 func prepareTaskInfo() mesosutils.TaskInfo {
@@ -242,86 +227,6 @@ func TestDoNotRegisterVaasBackendWhenDirectorNotSet(t *testing.T) {
 	err := serviceHook.RegisterBackend(prepareTaskInfo())
 
 	assert.Nil(t, err)
-}
-
-func TestIfBackendIDSetWhenAsyncBackendRegistrationSucceeds(t *testing.T) {
-	_ = os.Setenv("CLOUD_DC", "dc6")
-	defer os.Unsetenv("CLOUD_DC")
-
-	mockClient := new(MockClient)
-	mockDC := DC{
-		ID:          1,
-		ResourceURI: "dc/6",
-	}
-	taskURI := "/api/v0.1/task/abc/"
-
-	mockClient.On("GetDC", "dc6").Return(&mockDC, nil)
-	mockClient.On("FindDirectorID", "abc456").Return(456, nil)
-	weight := 50
-	mockClient.On("AddBackend", &Backend{
-		Address:            runenv.IP().String(),
-		DC:                 mockDC,
-		Director:           "/api/v0.1/director/456/",
-		InheritTimeProfile: true,
-		Port:               8080,
-		Weight:             &weight,
-	}).Return(taskURI, nil)
-	mockClient.On("TaskStatus", mock.MatchedBy(func(task *Task) bool {
-		require.Equal(t, "/api/v0.1/task/abc/", task.ResourceURI)
-		return true
-	})).Return(nil)
-
-	serviceHook := Hook{client: mockClient, asyncTimeout: 3 * time.Second}
-
-	trueValue := "true"
-	err := serviceHook.RegisterBackend(prepareTaskInfoWithDirector(
-		"abc456",
-		mesos.Label{Key: vaasAsyncLabelKey, Value: &trueValue}))
-
-	require.NoError(t, err)
-	expectedId := 123
-	assert.Equal(t, &expectedId, serviceHook.backendID)
-	mockClient.AssertExpectations(t)
-}
-
-func TestIfAsyncBackendRegistrationTimesOutWhenVaasErrorOccurs(t *testing.T) {
-	_ = os.Setenv("CLOUD_DC", "dc6")
-	defer os.Unsetenv("CLOUD_DC")
-
-	mockClient := new(MockClient)
-	mockDC := DC{
-		ID:          1,
-		ResourceURI: "dc/6",
-	}
-	taskURI := "/api/v0.1/task/abc/"
-
-	mockClient.On("GetDC", "dc6").Return(&mockDC, nil)
-	mockClient.On("FindDirectorID", "abc456").Return(456, nil)
-	weight := 50
-	mockClient.On("AddBackend", &Backend{
-		Address:            runenv.IP().String(),
-		DC:                 mockDC,
-		Director:           "/api/v0.1/director/456/",
-		InheritTimeProfile: true,
-		Port:               8080,
-		Weight:             &weight,
-	}).Return(taskURI, nil)
-	mockClient.On("TaskStatus", mock.MatchedBy(func(task *Task) bool {
-		require.Equal(t, "/api/v0.1/task/abc/", task.ResourceURI)
-		return true
-	})).Return(errors.New("VaaS Error"))
-
-	serviceHook := Hook{client: mockClient, asyncTimeout: 3 * time.Second}
-
-	trueValue := "true"
-	err := serviceHook.RegisterBackend(prepareTaskInfoWithDirector(
-		"abc456",
-		mesos.Label{Key: vaasAsyncLabelKey, Value: &trueValue}))
-
-	require.Error(t, err)
-	expectedId := 123
-	assert.Equal(t, &expectedId, serviceHook.backendID)
-	mockClient.AssertExpectations(t)
 }
 
 func TestIfNoErrorOnUnsupportedEvent(t *testing.T) {

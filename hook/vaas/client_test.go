@@ -2,7 +2,6 @@ package vaas
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -69,7 +68,7 @@ func TestBackendRegistrationFailureAfterVaasServerError(t *testing.T) {
 
 	client := NewClient(ts.URL, "username", "api-key")
 
-	_, err := client.AddBackend(&Backend{}, false)
+	_, err := client.AddBackend(&Backend{})
 
 	assert.Error(t, err)
 }
@@ -139,7 +138,7 @@ func TestIfBackendLocationIsSetFromVaasResponseHeader(t *testing.T) {
 		Director: "director",
 		DC:       DC{1, "DC1", "api/dc/1", "dc1"},
 		Port:     8080,
-	}, false)
+	})
 
 	require.NoError(t, err)
 	assert.Equal(t, "location", location)
@@ -181,109 +180,6 @@ func TestNoFailureWhenRemovingNonExistingBackendInVaas(t *testing.T) {
 	err := client.DeleteBackend(123)
 
 	assert.NoError(t, err)
-}
-
-func TestIfBackendAsyncRegistrationSucceeds(t *testing.T) {
-	expectedPath := apiPrefixPath + "/task/abc"
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, applicationJSON, r.Header.Get(contentTypeHeader))
-		assert.Equal(t, applicationJSON, r.Header.Get(acceptHeader))
-		rawRequest, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if r.URL.Path == apiBackendPath && r.Method == "POST" {
-			var b Backend
-
-			if err := json.Unmarshal(rawRequest, &b); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			w.Header().Set("Location", expectedPath)
-			w.Write(mockAddBackendResponse)
-		} else if r.URL.Path == expectedPath && r.Method == "GET" {
-			var task = Task{
-				Status: StatusReceived,
-			}
-			var data, _ = json.Marshal(task)
-			var _, err = w.Write(data)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-			}
-			w.WriteHeader(http.StatusAccepted)
-
-		} else {
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer ts.Close()
-
-	client := NewClient(ts.URL, "username", "api-key")
-
-	location, err := client.AddBackend(&Backend{
-		Address:  "127.0.0.1",
-		Director: "director",
-		DC:       DC{1, "DC1", "api/dc/1", "dc1"},
-		Port:     8080,
-	}, true)
-
-	require.NoError(t, err)
-	assert.Equal(t, expectedPath, location)
-}
-
-func TestIfTaskStatusSucceeds(t *testing.T) {
-	expectedPath := apiPrefixPath + "/task/abc"
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, applicationJSON, r.Header.Get(contentTypeHeader))
-		assert.Equal(t, applicationJSON, r.Header.Get(acceptHeader))
-		if r.URL.Path == expectedPath && r.Method == "GET" {
-			var task = Task{
-				Status: StatusReceived,
-			}
-			var data, _ = json.Marshal(task)
-			var _, err = w.Write(data)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-			}
-			w.WriteHeader(http.StatusAccepted)
-
-		} else {
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer ts.Close()
-
-	client := NewClient(ts.URL, "username", "api-key")
-
-	task := &Task{ResourceURI: expectedPath}
-	err := client.TaskStatus(task)
-
-	require.NoError(t, err)
-	assert.Equal(t, StatusReceived, task.Status)
-	assert.Equal(t, expectedPath, task.ResourceURI)
-}
-
-func TestGettingTaskStatusFailureWhenVaasServerError(t *testing.T) {
-	taskPath := apiPrefixPath + "/task/abc"
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, applicationJSON, r.Header.Get(contentTypeHeader))
-		assert.Equal(t, applicationJSON, r.Header.Get(acceptHeader))
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer ts.Close()
-
-	client := NewClient(ts.URL, "user", "key")
-	task := &Task{
-		ResourceURI: taskPath,
-	}
-
-	err := client.TaskStatus(task)
-
-	assert.Error(t, err, fmt.Sprintf(
-		"VaaS API error at %s%s?api_key=key&username=user (HTTP 500): ",
-		ts.URL, taskPath,
-	))
 }
 
 var mockAddBackendResponse = []byte(`{
