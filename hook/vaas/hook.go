@@ -114,8 +114,7 @@ func (sh *Hook) RegisterBackend(taskInfo mesosutils.TaskInfo) error {
 	}
 	_, err = sh.client.AddBackend(backend)
 	if err != nil {
-		return fmt.Errorf("unable to register backend with VaaS, %s: %d, reason: %s",
-			vaasBackendIDKey, *sh.backendID, err)
+		return fmt.Errorf("unable to register backend with VaaS, %s", err)
 	}
 	sh.backendID = backend.ID
 

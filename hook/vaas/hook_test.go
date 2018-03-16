@@ -2,6 +2,7 @@ package vaas
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 
@@ -94,12 +95,40 @@ func TestIfBackendIDSetWhenBackendRegistrationSucceeds(t *testing.T) {
 	}).Return("/api/v0.1/backend/123/", nil)
 
 	serviceHook := Hook{client: mockClient}
-
 	err := serviceHook.RegisterBackend(prepareTaskInfoWithDirector("abc456"))
 
 	require.NoError(t, err)
 	expectedId := 123
 	assert.Equal(t, &expectedId, serviceHook.backendID)
+	mockClient.AssertExpectations(t)
+}
+
+func TestBackendRegistrationWhenAddBackendFails(t *testing.T) {
+	_ = os.Setenv("CLOUD_DC", "dc6")
+	defer os.Unsetenv("CLOUD_DC")
+
+	mockClient := new(MockClient)
+	mockDC := DC{
+		ID:          1,
+		ResourceURI: "dc/6",
+	}
+
+	mockClient.On("GetDC", "dc6").Return(&mockDC, nil)
+	mockClient.On("FindDirectorID", "abc456").Return(456, nil)
+	weight := 50
+	mockClient.On("AddBackend", &Backend{
+		Address:            runenv.IP().String(),
+		DC:                 mockDC,
+		Director:           "/api/v0.1/director/456/",
+		InheritTimeProfile: true,
+		Port:               8080,
+		Weight:             &weight,
+	}).Return("/api/v0.1/backend/123/", fmt.Errorf("test error"))
+
+	serviceHook := Hook{client: mockClient}
+	err := serviceHook.RegisterBackend(prepareTaskInfoWithDirector("abc456"))
+
+	require.EqualError(t, err, "unable to register backend with VaaS, test error")
 	mockClient.AssertExpectations(t)
 }
 
