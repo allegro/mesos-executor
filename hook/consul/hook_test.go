@@ -39,7 +39,7 @@ func TestIfUsesLabelledPortsForServiceIDGen(t *testing.T) {
 	client, _ := api.NewClient(config) // #nosec
 	defer stopConsul(server)
 
-	h := &Hook{client: client}
+	h := &Hook{config: Config{ConsulGlobalTag: "marathon"}, client: client}
 	err := h.RegisterIntoConsul(taskInfo)
 
 	require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestIfUsesFirstPortIfNoneIsLabelledForServiceIDGen(t *testing.T) {
 	client, _ := api.NewClient(config) // #nosec
 	defer stopConsul(server)
 
-	h := &Hook{client: client}
+	h := &Hook{config: Config{ConsulGlobalTag: "marathon"}, client: client}
 	err := h.RegisterIntoConsul(taskInfo)
 
 	require.NoError(t, err)
@@ -119,7 +119,7 @@ func TestIfUsesLabelledPortsForServiceIDGenAndRegisterMultiplePorts(t *testing.T
 	client, _ := api.NewClient(config) // #nosec
 	defer stopConsul(server)
 
-	h := &Hook{client: client}
+	h := &Hook{config: Config{ConsulGlobalTag: "marathon"}, client: client}
 	err := h.RegisterIntoConsul(taskInfo)
 
 	require.NoError(t, err)
@@ -186,7 +186,7 @@ func TestIfUsesPortLabelsForRegistration(t *testing.T) {
 	client, _ := api.NewClient(config) // #nosec
 	defer stopConsul(server)
 
-	h := &Hook{client: client}
+	h := &Hook{config: Config{ConsulGlobalTag: "marathon"}, client: client}
 	err := h.RegisterIntoConsul(taskInfo)
 
 	require.NoError(t, err)
@@ -228,7 +228,7 @@ func TestIfGeneratesNameIfConsulLabelTrueOrEmpty(t *testing.T) {
 		client, _ := api.NewClient(config) // #nosec
 		defer stopConsul(server)
 
-		h := &Hook{client: client}
+		h := &Hook{config: Config{ConsulGlobalTag: "marathon"}, client: client}
 		err := h.RegisterIntoConsul(taskInfo)
 
 		require.NoError(t, err)
@@ -270,7 +270,7 @@ func TestIfGeneratesCorrectNameIfConsulLabelEmpty(t *testing.T) {
 			client, _ := api.NewClient(config) // #nosec
 			defer stopConsul(server)
 
-			h := &Hook{client: client}
+			h := &Hook{config: Config{ConsulGlobalTag: "marathon"}, client: client}
 			err := h.RegisterIntoConsul(taskInfo)
 
 			require.NoError(t, err)
@@ -309,7 +309,7 @@ func TestIfServiceDeregisteredCorrectly(t *testing.T) {
 	client, _ := api.NewClient(config) // #nosec
 	defer stopConsul(server)
 
-	h := &Hook{client: client}
+	h := &Hook{config: Config{ConsulGlobalTag: "marathon"}, client: client}
 	err := h.RegisterIntoConsul(taskInfo)
 
 	require.NoError(t, err)
@@ -339,7 +339,7 @@ func TestIfErrorHandledOnNoConsul(t *testing.T) {
 	config.Address = "http://localhost:5200"
 	client, _ := api.NewClient(config) // #nosec
 
-	h := &Hook{client: client}
+	h := &Hook{config: Config{ConsulGlobalTag: "marathon"}, client: client}
 	err := h.RegisterIntoConsul(taskInfo)
 
 	require.Error(t, err)

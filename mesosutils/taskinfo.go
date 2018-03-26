@@ -144,7 +144,7 @@ func (h TaskInfo) GetServiceID() string {
 
 // GetLabelKeysByValue searches provided labels for a given value and returns a list of matching keys
 func GetLabelKeysByValue(labels []mesos.Label, value string) []string {
-	keys := []string{}
+	var keys []string
 
 	for _, label := range labels {
 		if label.GetValue() == value {

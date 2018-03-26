@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/consul/api"
 	log "github.com/sirupsen/logrus"
 
-	executor "github.com/allegro/mesos-executor"
+	"github.com/allegro/mesos-executor"
 	"github.com/allegro/mesos-executor/hook"
 	"github.com/allegro/mesos-executor/mesosutils"
 	"github.com/allegro/mesos-executor/runenv"
@@ -34,6 +34,7 @@ type instance struct {
 // Hook is an executor hook implementation that will register and deregister a service instance
 // in Consul right after startup and just before task termination, respectively.
 type Hook struct {
+	config           Config
 	client           *api.Client
 	serviceInstances []instance
 }
@@ -42,6 +43,15 @@ type Hook struct {
 type Config struct {
 	// Consul ACL Token
 	ConsulToken string `default:"" envconfig:"consul_token"`
+	// ConsulGlobalTag is a tag added to every service registered in Consul.
+	// When executor fails (e.g., OOM, host restarted) task will NOT
+	// be deregistered. This should be done by remote service reconciling
+	// state between mesos and consul. We are using marathon-consul.
+	// It requires task to be tagged with common tag: "marathon" by default.
+	// > common tag name added to every service registered in Consul,
+	// > should be unique for every Marathon-cluster connected to Consul
+	// https://github.com/allegro/marathon-consul/blob/1.4.2/config/config.go#L74
+	ConsulGlobalTag string `default:"marathon" envconfig:"consul_global_tag"`
 }
 
 // HandleEvent calls appropriate hook functions that correspond to supported
@@ -80,18 +90,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 	}
 
 	ports := taskInfo.GetPorts()
-	globalTags := taskInfo.GetLabelKeysByValue(consulTagValue)
-
-	// When executor fails (e.g., OOM, host restarted) task will NOT
-	// be deregistered. This should be done by remote service reconciling
-	// state between mesos and consul. We are using marathon-consul.
-	// It requires task to be tagged with common tag: "marathon" by default.
-	// > common tag name added to every service registered in Consul,
-	// > should be unique for every Marathon-cluster connected to Consul
-	// https://github.com/allegro/marathon-consul/blob/1.4.2/config/config.go#L74
-	// TODO(janisz): Think about reading it from configuration
-	// for now we are using the default value of marathon-consul
-	globalTags = append(globalTags, "marathon")
+	globalTags := append(taskInfo.GetLabelKeysByValue(consulTagValue), h.config.ConsulGlobalTag)
 
 	var instancesToRegister []instance
 	for _, port := range ports {
@@ -220,5 +219,5 @@ func NewHook(cfg Config) (hook.Hook, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Hook{client: client}, err
+	return &Hook{config: cfg, client: client}, err
 }
