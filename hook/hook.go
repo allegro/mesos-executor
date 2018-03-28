@@ -19,6 +19,15 @@ const (
 	BeforeTerminateEvent
 )
 
+// NoopHook is a hook that ignores all events
+type NoopHook struct {
+}
+
+// HandleEvent ignores all events
+func (noop NoopHook) HandleEvent(event Event) (Env, error) {
+	return nil, nil
+}
+
 // Event is a container type for various event specific data.
 type Event struct {
 	Type     EventType

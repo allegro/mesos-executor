@@ -33,6 +33,8 @@ type Hook struct {
 
 // Config is Varnish configuration settable from environment
 type Config struct {
+	// Enabled is a flag to control whether hook should be used
+	Enabled bool `default:"true" envconfig:"vaas_hook_enabled"`
 	// Varnish as a Service API url
 	VaasAPIHost string `default:"" envconfig:"vaas_host"`
 	// Varnish as a Service username
@@ -161,7 +163,10 @@ func (sh *Hook) HandleEvent(event hook.Event) (hook.Env, error) {
 }
 
 // NewHook returns new instance of Hook.
-func NewHook(cfg Config) (*Hook, error) {
+func NewHook(cfg Config) (hook.Hook, error) {
+	if !cfg.Enabled {
+		return hook.NoopHook{}, nil
+	}
 	return &Hook{
 		client: NewClient(
 			cfg.VaasAPIHost,
