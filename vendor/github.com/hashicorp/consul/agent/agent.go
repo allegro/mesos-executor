@@ -130,6 +130,9 @@ type Agent struct {
 	// checkTCPs maps the check ID to an associated TCP check
 	checkTCPs map[types.CheckID]*checks.CheckTCP
 
+	// checkGRPCs maps the check ID to an associated GRPC check
+	checkGRPCs map[types.CheckID]*checks.CheckGRPC
+
 	// checkTTLs maps the check ID to an associated check TTL
 	checkTTLs map[types.CheckID]*checks.CheckTTL
 
@@ -212,6 +215,7 @@ func New(c *config.RuntimeConfig) (*Agent, error) {
 		checkTTLs:       make(map[types.CheckID]*checks.CheckTTL),
 		checkHTTPs:      make(map[types.CheckID]*checks.CheckHTTP),
 		checkTCPs:       make(map[types.CheckID]*checks.CheckTCP),
+		checkGRPCs:      make(map[types.CheckID]*checks.CheckGRPC),
 		checkDockers:    make(map[types.CheckID]*checks.CheckDocker),
 		eventCh:         make(chan serf.UserEvent, 1024),
 		eventBuf:        make([]*UserEvent, 256),
@@ -607,11 +611,12 @@ func (a *Agent) reloadWatches(cfg *config.RuntimeConfig) error {
 		if raw, ok := args.([]interface{}); hasArgs && ok {
 			var parsed []string
 			for _, arg := range raw {
-				if v, ok := arg.(string); !ok {
+				v, ok := arg.(string)
+				if !ok {
 					return fmt.Errorf("Watch args must be a list of strings")
-				} else {
-					parsed = append(parsed, v)
 				}
+
+				parsed = append(parsed, v)
 			}
 			wp.Exempt["args"] = parsed
 		} else if hasArgs && !ok {
@@ -767,30 +772,19 @@ func (a *Agent) consulConfig() (*consul.Config, error) {
 	if a.config.SessionTTLMin != 0 {
 		base.SessionTTLMin = a.config.SessionTTLMin
 	}
-	if a.config.AutopilotCleanupDeadServers {
-		base.AutopilotConfig.CleanupDeadServers = a.config.AutopilotCleanupDeadServers
-	}
-	if a.config.AutopilotLastContactThreshold != 0 {
-		base.AutopilotConfig.LastContactThreshold = a.config.AutopilotLastContactThreshold
-	}
-	if a.config.AutopilotMaxTrailingLogs != 0 {
-		base.AutopilotConfig.MaxTrailingLogs = uint64(a.config.AutopilotMaxTrailingLogs)
-	}
-	if a.config.AutopilotServerStabilizationTime != 0 {
-		base.AutopilotConfig.ServerStabilizationTime = a.config.AutopilotServerStabilizationTime
-	}
 	if a.config.NonVotingServer {
 		base.NonVoter = a.config.NonVotingServer
 	}
-	if a.config.AutopilotRedundancyZoneTag != "" {
-		base.AutopilotConfig.RedundancyZoneTag = a.config.AutopilotRedundancyZoneTag
-	}
-	if a.config.AutopilotDisableUpgradeMigration {
-		base.AutopilotConfig.DisableUpgradeMigration = a.config.AutopilotDisableUpgradeMigration
-	}
-	if a.config.AutopilotUpgradeVersionTag != "" {
-		base.AutopilotConfig.UpgradeVersionTag = a.config.AutopilotUpgradeVersionTag
-	}
+
+	// These are fully specified in the agent defaults, so we can simply
+	// copy them over.
+	base.AutopilotConfig.CleanupDeadServers = a.config.AutopilotCleanupDeadServers
+	base.AutopilotConfig.LastContactThreshold = a.config.AutopilotLastContactThreshold
+	base.AutopilotConfig.MaxTrailingLogs = uint64(a.config.AutopilotMaxTrailingLogs)
+	base.AutopilotConfig.ServerStabilizationTime = a.config.AutopilotServerStabilizationTime
+	base.AutopilotConfig.RedundancyZoneTag = a.config.AutopilotRedundancyZoneTag
+	base.AutopilotConfig.DisableUpgradeMigration = a.config.AutopilotDisableUpgradeMigration
+	base.AutopilotConfig.UpgradeVersionTag = a.config.AutopilotUpgradeVersionTag
 
 	// make sure the advertise address is always set
 	if base.RPCAdvertise == nil {
@@ -1179,6 +1173,9 @@ func (a *Agent) ShutdownAgent() error {
 		chk.Stop()
 	}
 	for _, chk := range a.checkTCPs {
+		chk.Stop()
+	}
+	for _, chk := range a.checkGRPCs {
 		chk.Stop()
 	}
 	for _, chk := range a.checkDockers {
@@ -1603,6 +1600,7 @@ func (a *Agent) AddService(service *structs.NodeService, chkTypes []*structs.Che
 			Notes:       chkType.Notes,
 			ServiceID:   service.ID,
 			ServiceName: service.Service,
+			ServiceTags: service.Tags,
 		}
 		if chkType.Status != "" {
 			check.Status = chkType.Status
@@ -1674,6 +1672,7 @@ func (a *Agent) AddCheck(check *structs.HealthCheck, chkType *structs.CheckType,
 			return fmt.Errorf("ServiceID %q does not exist", check.ServiceID)
 		}
 		check.ServiceName = s.Service
+		check.ServiceTags = s.Tags
 	}
 
 	a.checkLock.Lock()
@@ -1716,19 +1715,7 @@ func (a *Agent) AddCheck(check *structs.HealthCheck, chkType *structs.CheckType,
 				chkType.Interval = checks.MinInterval
 			}
 
-			// We re-use the API client's TLS structure since it
-			// closely aligns with Consul's internal configuration.
-			tlsConfig := &api.TLSConfig{
-				InsecureSkipVerify: chkType.TLSSkipVerify,
-			}
-			if a.config.EnableAgentTLSForChecks {
-				tlsConfig.Address = a.config.ServerName
-				tlsConfig.KeyFile = a.config.KeyFile
-				tlsConfig.CertFile = a.config.CertFile
-				tlsConfig.CAFile = a.config.CAFile
-				tlsConfig.CAPath = a.config.CAPath
-			}
-			tlsClientConfig, err := api.SetupTLSConfig(tlsConfig)
+			tlsClientConfig, err := a.setupTLSClientConfig(chkType.TLSSkipVerify)
 			if err != nil {
 				return fmt.Errorf("Failed to set up TLS: %v", err)
 			}
@@ -1768,6 +1755,38 @@ func (a *Agent) AddCheck(check *structs.HealthCheck, chkType *structs.CheckType,
 			}
 			tcp.Start()
 			a.checkTCPs[check.CheckID] = tcp
+
+		case chkType.IsGRPC():
+			if existing, ok := a.checkGRPCs[check.CheckID]; ok {
+				existing.Stop()
+				delete(a.checkGRPCs, check.CheckID)
+			}
+			if chkType.Interval < checks.MinInterval {
+				a.logger.Println(fmt.Sprintf("[WARN] agent: check '%s' has interval below minimum of %v",
+					check.CheckID, checks.MinInterval))
+				chkType.Interval = checks.MinInterval
+			}
+
+			var tlsClientConfig *tls.Config
+			if chkType.GRPCUseTLS {
+				var err error
+				tlsClientConfig, err = a.setupTLSClientConfig(chkType.TLSSkipVerify)
+				if err != nil {
+					return fmt.Errorf("Failed to set up TLS: %v", err)
+				}
+			}
+
+			grpc := &checks.CheckGRPC{
+				Notify:          a.State,
+				CheckID:         check.CheckID,
+				GRPC:            chkType.GRPC,
+				Interval:        chkType.Interval,
+				Timeout:         chkType.Timeout,
+				Logger:          a.logger,
+				TLSClientConfig: tlsClientConfig,
+			}
+			grpc.Start()
+			a.checkGRPCs[check.CheckID] = grpc
 
 		case chkType.IsDocker():
 			if existing, ok := a.checkDockers[check.CheckID]; ok {
@@ -1872,6 +1891,23 @@ func (a *Agent) AddCheck(check *structs.HealthCheck, chkType *structs.CheckType,
 	return nil
 }
 
+func (a *Agent) setupTLSClientConfig(skipVerify bool) (tlsClientConfig *tls.Config, err error) {
+	// We re-use the API client's TLS structure since it
+	// closely aligns with Consul's internal configuration.
+	tlsConfig := &api.TLSConfig{
+		InsecureSkipVerify: skipVerify,
+	}
+	if a.config.EnableAgentTLSForChecks {
+		tlsConfig.Address = a.config.ServerName
+		tlsConfig.KeyFile = a.config.KeyFile
+		tlsConfig.CertFile = a.config.CertFile
+		tlsConfig.CAFile = a.config.CAFile
+		tlsConfig.CAPath = a.config.CAPath
+	}
+	tlsClientConfig, err = api.SetupTLSConfig(tlsConfig)
+	return
+}
+
 // RemoveCheck is used to remove a health check.
 // The agent will make a best effort to ensure it is deregistered
 func (a *Agent) RemoveCheck(checkID types.CheckID, persist bool) error {
@@ -1914,6 +1950,10 @@ func (a *Agent) cancelCheckMonitors(checkID types.CheckID) {
 	if check, ok := a.checkTCPs[checkID]; ok {
 		check.Stop()
 		delete(a.checkTCPs, checkID)
+	}
+	if check, ok := a.checkGRPCs[checkID]; ok {
+		check.Stop()
+		delete(a.checkGRPCs, checkID)
 	}
 	if check, ok := a.checkTTLs[checkID]; ok {
 		check.Stop()
@@ -2165,7 +2205,8 @@ func (a *Agent) loadServices(conf *config.RuntimeConfig) error {
 		if err := json.Unmarshal(buf, &p); err != nil {
 			// Backwards-compatibility for pre-0.5.1 persisted services
 			if err := json.Unmarshal(buf, &p.Service); err != nil {
-				return fmt.Errorf("failed decoding service file %q: %s", file, err)
+				a.logger.Printf("[ERR] Failed decoding service file %q: %s", file, err)
+				continue
 			}
 		}
 		serviceID := p.Service.ID
@@ -2244,7 +2285,8 @@ func (a *Agent) loadChecks(conf *config.RuntimeConfig) error {
 		// Decode the check
 		var p persistedCheck
 		if err := json.Unmarshal(buf, &p); err != nil {
-			return fmt.Errorf("Failed decoding check file %q: %s", file, err)
+			a.logger.Printf("[ERR] Failed decoding check file %q: %s", file, err)
+			continue
 		}
 		checkID := p.Check.CheckID
 

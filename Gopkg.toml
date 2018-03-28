@@ -3,18 +3,19 @@
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
-  version = "1.0.3"
+  version = "1.0.5"
 
 [[constraint]]
   name = "github.com/evalphobia/logrus_sentry"
-  version = "0.4.2"
+  version = "0.4.5"
 
 [[constraint]]
   name = "github.com/getsentry/raven-go"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/hashicorp/consul"
-  version = "1.0.1"
+  version = "1.0.6"
 
 [[constraint]]
   name = "github.com/kelseyhightower/envconfig"
@@ -39,10 +40,6 @@
 [[constraint]]
   name = "github.com/stretchr/testify"
   revision = "f6abca593680b2315d2075e0f5e2a9751e3f431a"
-
-[[constraint]]
-  name = "gopkg.in/h2non/gentleman.v1"
-  version = "1.0.3"
 
 [[constraint]]
   name = "github.com/rcrowley/go-metrics"
