@@ -27,8 +27,8 @@
 [[projects]]
   name = "github.com/evalphobia/logrus_sentry"
   packages = ["."]
-  revision = "13ba9278e2adf1537fd94143a6b6a1c0dc008ac7"
-  version = "v0.4.2"
+  revision = "57846a82817615f185b10cc40de8dc60c1ca5ae1"
+  version = "v0.4.5"
 
 [[projects]]
   branch = "master"
@@ -44,7 +44,10 @@
 
 [[projects]]
   name = "github.com/go-ole/go-ole"
-  packages = [".","oleutil"]
+  packages = [
+    ".",
+    "oleutil"
+  ]
   revision = "0e87ea779d9deb219633b828a023b32e1244dd57"
   version = "v1.2.0"
 
@@ -56,9 +59,14 @@
 
 [[projects]]
   name = "github.com/hashicorp/consul"
-  packages = ["api","lib/freeport","testutil","testutil/retry"]
-  revision = "9564c2978b59c060aed0657e662a4eb1c6f35356"
-  version = "v1.0.1"
+  packages = [
+    "api",
+    "lib/freeport",
+    "testutil",
+    "testutil/retry"
+  ]
+  revision = "9a494b5fb9c86180a5702e29c485df1507a47198"
+  version = "v1.0.6"
 
 [[projects]]
   branch = "master"
@@ -98,7 +106,19 @@
 
 [[projects]]
   name = "github.com/mesos/mesos-go"
-  packages = ["api/v1/lib","api/v1/lib/backoff","api/v1/lib/encoding","api/v1/lib/encoding/framing","api/v1/lib/encoding/proto","api/v1/lib/executor","api/v1/lib/executor/calls","api/v1/lib/executor/config","api/v1/lib/httpcli","api/v1/lib/recordio","api/v1/lib/time"]
+  packages = [
+    "api/v1/lib",
+    "api/v1/lib/backoff",
+    "api/v1/lib/encoding",
+    "api/v1/lib/encoding/framing",
+    "api/v1/lib/encoding/proto",
+    "api/v1/lib/executor",
+    "api/v1/lib/executor/calls",
+    "api/v1/lib/executor/config",
+    "api/v1/lib/httpcli",
+    "api/v1/lib/recordio",
+    "api/v1/lib/time"
+  ]
   revision = "36b30d8a146d425c9cbd70afe86f667540a248e3"
 
 [[projects]]
@@ -134,7 +154,10 @@
 [[projects]]
   branch = "master"
   name = "github.com/pquerna/ffjson"
-  packages = ["fflib/v1","fflib/v1/internal"]
+  packages = [
+    "fflib/v1",
+    "fflib/v1/internal"
+  ]
   revision = "5333e98ee8b90e40336e56eb540641519813383b"
 
 [[projects]]
@@ -144,7 +167,14 @@
 
 [[projects]]
   name = "github.com/shirou/gopsutil"
-  packages = ["cpu","host","internal/common","mem","net","process"]
+  packages = [
+    "cpu",
+    "host",
+    "internal/common",
+    "mem",
+    "net",
+    "process"
+  ]
   revision = "114c78c777eb86b58e40910cbd3fc451829c366d"
   version = "v2.17.07"
 
@@ -157,8 +187,8 @@
 [[projects]]
   name = "github.com/sirupsen/logrus"
   packages = ["."]
-  revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
-  version = "v1.0.4"
+  revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
+  version = "v1.0.5"
 
 [[projects]]
   branch = "master"
@@ -168,7 +198,11 @@
 
 [[projects]]
   name = "github.com/stretchr/testify"
-  packages = ["assert","mock","require"]
+  packages = [
+    "assert",
+    "mock",
+    "require"
+  ]
   revision = "f6abca593680b2315d2075e0f5e2a9751e3f431a"
 
 [[projects]]
@@ -186,7 +220,10 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix","windows"]
+  packages = [
+    "unix",
+    "windows"
+  ]
   revision = "b0e0dd72976dc482b6cb37c5640440f876ac1907"
 
 [[projects]]
@@ -198,6 +235,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c661d13723624c536ac04c84872ebae31e45b8b7cc4e554e9fd10a0199ae15a8"
+  inputs-digest = "0f8ebaa95758b87d2eb9092cdf2a3d8a698b6cc3b86141b23e08fb4cba391e90"
   solver-name = "gps-cdcl"
   solver-version = 1

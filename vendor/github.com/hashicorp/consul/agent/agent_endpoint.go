@@ -35,14 +35,6 @@ func (s *HTTPServer) AgentSelf(resp http.ResponseWriter, req *http.Request) (int
 		return nil, MethodNotAllowedError{req.Method, []string{"GET"}}
 	}
 
-	var cs lib.CoordinateSet
-	if !s.agent.config.DisableCoordinates {
-		var err error
-		if cs, err = s.agent.GetLANCoordinate(); err != nil {
-			return nil, err
-		}
-	}
-
 	// Fetch the ACL token, if any, and enforce agent policy.
 	var token string
 	s.parseToken(req, &token)
@@ -54,15 +46,25 @@ func (s *HTTPServer) AgentSelf(resp http.ResponseWriter, req *http.Request) (int
 		return nil, acl.ErrPermissionDenied
 	}
 
+	var cs lib.CoordinateSet
+	if !s.agent.config.DisableCoordinates {
+		var err error
+		if cs, err = s.agent.GetLANCoordinate(); err != nil {
+			return nil, err
+		}
+	}
+
 	config := struct {
 		Datacenter string
 		NodeName   string
+		NodeID     string
 		Revision   string
 		Server     bool
 		Version    string
 	}{
 		Datacenter: s.agent.config.Datacenter,
 		NodeName:   s.agent.config.NodeName,
+		NodeID:     string(s.agent.config.NodeID),
 		Revision:   s.agent.config.Revision,
 		Server:     s.agent.config.ServerMode,
 		Version:    s.agent.config.Version,
@@ -144,9 +146,11 @@ func (s *HTTPServer) AgentServices(resp http.ResponseWriter, req *http.Request) 
 	}
 
 	// Use empty list instead of nil
-	for _, s := range services {
+	for id, s := range services {
 		if s.Tags == nil {
-			s.Tags = make([]string, 0)
+			clone := *s
+			clone.Tags = make([]string, 0)
+			services[id] = &clone
 		}
 	}
 
@@ -168,10 +172,11 @@ func (s *HTTPServer) AgentChecks(resp http.ResponseWriter, req *http.Request) (i
 	}
 
 	// Use empty list instead of nil
-	// checks needs to be a deep copy for this not be racy
-	for _, c := range checks {
+	for id, c := range checks {
 		if c.ServiceTags == nil {
-			c.ServiceTags = make([]string, 0)
+			clone := *c
+			clone.ServiceTags = make([]string, 0)
+			checks[id] = &clone
 		}
 	}
 
@@ -809,6 +814,9 @@ func (h *httpLogHandler) HandleLog(log string) {
 }
 
 func (s *HTTPServer) AgentToken(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
+	if s.checkACLDisabled(resp, req) {
+		return nil, nil
+	}
 	if req.Method != "PUT" {
 		return nil, MethodNotAllowedError{req.Method, []string{"PUT"}}
 	}

@@ -1,7 +1,7 @@
 SHELL = bash
 GOTOOLS = \
 	github.com/elazarl/go-bindata-assetfs/... \
-	github.com/jteeuwen/go-bindata/... \
+	github.com/hashicorp/go-bindata/... \
 	github.com/magiconair/vendorfmt/cmd/vendorfmt \
 	github.com/mitchellh/gox \
 	golang.org/x/tools/cmd/cover \
@@ -13,6 +13,7 @@ GOTAGS ?=
 GOFILES ?= $(shell go list ./... | grep -v /vendor/)
 GOOS=$(shell go env GOOS)
 GOARCH=$(shell go env GOARCH)
+GOPATH=$(shell go env GOPATH)
 
 # Get the git commit
 GIT_COMMIT=$(shell git rev-parse --short HEAD)
