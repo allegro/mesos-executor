@@ -286,7 +286,7 @@ func TestIfGeneratesCorrectNameIfConsulLabelEmpty(t *testing.T) {
 }
 
 func TestIfNoErrorOnUnsupportedEvent(t *testing.T) {
-	h, err := NewHook(Config{})
+	h, err := NewHook(Config{Enabled: true})
 
 	require.NoError(t, err)
 
@@ -344,6 +344,13 @@ func TestIfErrorHandledOnNoConsul(t *testing.T) {
 
 	require.Error(t, err)
 	require.Len(t, h.serviceInstances, 0)
+}
+
+func TestIfNewHookCreatesNoopHookWhenHookDisabled(t *testing.T) {
+	h, err := NewHook(Config{Enabled: false})
+
+	require.NoError(t, err)
+	require.IsType(t, hook.NoopHook{}, h)
 }
 
 func stopConsul(server *testutil.TestServer) {

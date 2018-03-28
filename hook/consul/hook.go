@@ -41,6 +41,8 @@ type Hook struct {
 
 // Config is Consul hook configuration settable from environment
 type Config struct {
+	// Enabled is a flag to control whether hook should be used
+	Enabled bool `default:"true" envconfig:"consul_hook_enabled"`
 	// Consul ACL Token
 	ConsulToken string `default:"" envconfig:"consul_token"`
 	// ConsulGlobalTag is a tag added to every service registered in Consul.
@@ -213,6 +215,9 @@ func generateURL(path string, port int) string {
 
 // NewHook creates new Consul hook that is responsible for graceful Consul deregistration.
 func NewHook(cfg Config) (hook.Hook, error) {
+	if !cfg.Enabled {
+		return hook.NoopHook{}, nil
+	}
 	config := api.DefaultConfig()
 	config.Token = cfg.ConsulToken
 	client, err := api.NewClient(config)

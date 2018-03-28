@@ -259,7 +259,7 @@ func TestDoNotRegisterVaasBackendWhenDirectorNotSet(t *testing.T) {
 }
 
 func TestIfNoErrorOnUnsupportedEvent(t *testing.T) {
-	h, err := NewHook(Config{})
+	h, err := NewHook(Config{Enabled: true})
 
 	require.NoError(t, err)
 
@@ -268,4 +268,11 @@ func TestIfNoErrorOnUnsupportedEvent(t *testing.T) {
 	})
 
 	require.NoError(t, err)
+}
+
+func TestIfNewHookCreatesNoopHookWhenHookDisabled(t *testing.T) {
+	h, err := NewHook(Config{Enabled: false})
+
+	require.NoError(t, err)
+	assert.IsType(t, hook.NoopHook{}, h)
 }
