@@ -101,8 +101,34 @@ func readConfiguration(config interface{}) {
 	}
 }
 
+func startExecutor(conf executor.Config) error {
+	exec := executor.NewExecutor(sanitizeConfig(conf), createHooks()...)
+	return exec.Start()
+}
+
+func sanitizeConfig(conf executor.Config) executor.Config {
+	if conf.RandomExpirationRange <= 0 {
+		conf.RandomExpirationRange = 3 * time.Hour
+	}
+	if conf.APIPath == "" {
+		conf.APIPath = "/api/v1/executor"
+	}
+	if conf.HTTPTimeout <= 0 {
+		conf.HTTPTimeout = 10 * time.Second
+	}
+	if conf.MesosConfig.RecoveryTimeout <= 0 {
+		conf.MesosConfig.RecoveryTimeout = time.Second
+	}
+	if conf.MesosConfig.SubscriptionBackoffMax < time.Second {
+		conf.MesosConfig.SubscriptionBackoffMax = time.Second
+	}
+
+	return conf
+}
+
 func main() {
 	log.Infof("Allegro Mesos Executor (version: %s)", Version)
+
 	cfg, err := config.FromEnv()
 	if err != nil {
 		log.WithError(err).Fatal("Failed to load Mesos configuration")
@@ -118,8 +144,8 @@ func main() {
 	Config.MesosConfig.Checkpoint = cfg.Checkpoint
 	Config.MesosConfig.RecoveryTimeout = cfg.RecoveryTimeout
 	Config.MesosConfig.SubscriptionBackoffMax = cfg.SubscriptionBackoffMax
-	exec := executor.NewExecutor(Config, createHooks()...)
-	if err := exec.Start(); err != nil {
+	err = startExecutor(Config)
+	if err != nil {
 		log.WithError(err).Fatal("Executor exited with error")
 	}
 	log.Info("Executor exited successfully")
