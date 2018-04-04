@@ -17,14 +17,12 @@ func floatEquals(a, b float64) bool {
 }
 
 func ExampleGraphite() {
-	addr, _ := net.ResolveTCPAddr("net", ":2003")
-	go Graphite(metrics.DefaultRegistry, 1*time.Second, "some.prefix", addr)
+	go Graphite(metrics.DefaultRegistry, 1*time.Second, "some.prefix", ":2003")
 }
 
 func ExampleWithConfig() {
-	addr, _ := net.ResolveTCPAddr("net", ":2003")
 	go WithConfig(Config{
-		Addr:          addr,
+		Addr:          ":2003",
 		Registry:      metrics.DefaultRegistry,
 		FlushInterval: 1 * time.Second,
 		DurationUnit:  time.Millisecond,
@@ -42,31 +40,30 @@ func NewTestServer(t *testing.T, prefix string) (map[string]float64, net.Listene
 
 	var wg sync.WaitGroup
 	go func() {
-		for {
-			conn, err := ln.Accept()
-			if err != nil {
-				t.Fatal("dummy server error:", err)
-			}
-			r := bufio.NewReader(conn)
-			line, err := r.ReadString('\n')
-			for err == nil {
-				parts := strings.Split(line, " ")
-				i, _ := strconv.ParseFloat(parts[1], 0)
-				if testing.Verbose() {
-					t.Log("recv", parts[0], i)
-				}
-				res[parts[0]] = res[parts[0]] + i
-				line, err = r.ReadString('\n')
-			}
-			wg.Done()
-			conn.Close()
+		conn, err := ln.Accept()
+		if err != nil {
+			t.Fatal("dummy server error:", err)
 		}
+		defer conn.Close()
+		r := bufio.NewReader(conn)
+		line, err := r.ReadString('\n')
+		for err == nil {
+			parts := strings.Split(line, " ")
+			i, _ := strconv.ParseFloat(parts[1], 0)
+			if testing.Verbose() {
+				t.Log("recv", parts[0], i)
+			}
+			res[parts[0]] = res[parts[0]] + i
+			line, err = r.ReadString('\n')
+		}
+		wg.Done()
+		return
 	}()
 
 	r := metrics.NewRegistry()
 
 	c := Config{
-		Addr:          ln.Addr().(*net.TCPAddr),
+		Addr:          ln.Addr().String(),
 		Registry:      r,
 		FlushInterval: 10 * time.Millisecond,
 		DurationUnit:  time.Millisecond,
