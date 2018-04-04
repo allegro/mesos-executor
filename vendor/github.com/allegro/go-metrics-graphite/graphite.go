@@ -15,7 +15,7 @@ import (
 // Config provides a container with configuration parameters for
 // the Graphite exporter
 type Config struct {
-	Addr          *net.TCPAddr     // Network address to connect to
+	Addr          string           // Network address to connect to
 	Registry      metrics.Registry // Registry to be exported
 	FlushInterval time.Duration    // Flush interval
 	DurationUnit  time.Duration    // Time conversion unit for durations
@@ -26,7 +26,7 @@ type Config struct {
 // Graphite is a blocking exporter function which reports metrics in r
 // to a graphite server located at addr, flushing them every d duration
 // and prepending metric names with prefix.
-func Graphite(r metrics.Registry, d time.Duration, prefix string, addr *net.TCPAddr) {
+func Graphite(r metrics.Registry, d time.Duration, prefix string, addr string) {
 	WithConfig(Config{
 		Addr:          addr,
 		Registry:      r,
@@ -58,7 +58,7 @@ func graphite(c *Config) error {
 	now := time.Now().Unix()
 	du := float64(c.DurationUnit)
 	flushSeconds := float64(c.FlushInterval) / float64(time.Second)
-	conn, err := net.DialTCP("tcp", nil, c.Addr)
+	conn, err := net.Dial("tcp", c.Addr)
 	if nil != err {
 		return err
 	}

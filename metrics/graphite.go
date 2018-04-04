@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cyberdelia/go-metrics-graphite"
+	"github.com/allegro/go-metrics-graphite"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rcrowley/go-metrics"
 	log "github.com/sirupsen/logrus"
@@ -47,8 +47,8 @@ type GraphiteConfig struct {
 // SetupGraphite will configure metric system to periodically send metrics to
 // Graphite.
 func SetupGraphite(cfg GraphiteConfig) error {
-	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
-	if err != nil {
+	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+	if _, err := net.ResolveTCPAddr("tcp", addr); err != nil {
 		return fmt.Errorf("invalid Graphite address: %s", err)
 	}
 	go graphite.Graphite(metrics.DefaultRegistry, time.Minute, buildUniquePrefix(cfg.Prefix), addr)
