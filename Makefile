@@ -1,8 +1,7 @@
 APPLICATION_NAME    := github.com/allegro/mesos-executor
-APPLICATION_VERSION := $(shell cat VERSION)
+APPLICATION_VERSION := $(shell git describe --tags || echo "unknown")
 
 LDFLAGS := -X main.Version=$(APPLICATION_VERSION)
-USER_ID := `id -u $$USER`
 
 BUILD_FOLDER := target
 
@@ -45,8 +44,8 @@ lint-deps:
 		(go get -u -v gopkg.in/alecthomas/gometalinter.v2 && gometalinter.v2 --install)
 
 package: build
-	zip -j $(BUILD_FOLDER)/executor-linux-amd64.zip $(BUILD_FOLDER)/executor
-	chmod 0755 $(BUILD_FOLDER)/executor-linux-amd64.zip
+	zip -j $(BUILD_FOLDER)/executor-$(APPLICATION_VERSION)-linux-amd64.zip $(BUILD_FOLDER)/executor
+	chmod 0755 $(BUILD_FOLDER)/executor-$(APPLICATION_VERSION)-linux-amd64.zip
 	chmod 0777 $(BUILD_FOLDER)
 
 test: $(COVERAGEDIR)/coverage.out
