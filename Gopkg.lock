@@ -8,15 +8,15 @@
   revision = "ea383cf3ba6ec950874b8486cd72356d007c768f"
 
 [[projects]]
+  name = "github.com/allegro/go-metrics-graphite"
+  packages = ["."]
+  revision = "d8aec135f2c1e2d0fd86f55e9b85427ba6592490"
+
+[[projects]]
   name = "github.com/certifi/gocertifi"
   packages = ["."]
   revision = "3fd9e1adb12b72d2f3f82191d49be9b93c69f67c"
   version = "2017.07.27"
-
-[[projects]]
-  name = "github.com/cyberdelia/go-metrics-graphite"
-  packages = ["."]
-  revision = "39f87cc3b432bbb898d7c643c0e93cac2bc865ad"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -235,6 +235,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0f8ebaa95758b87d2eb9092cdf2a3d8a698b6cc3b86141b23e08fb4cba391e90"
+  inputs-digest = "db8c94361250696d785c7b0e79e6a14ade271523c9b44c7e347f380227d01f1a"
   solver-name = "gps-cdcl"
   solver-version = 1

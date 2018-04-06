@@ -1,17 +1,10 @@
 APPLICATION_NAME    := github.com/allegro/mesos-executor
-APPLICATION_VERSION := $(shell cat VERSION)
+APPLICATION_VERSION := $(shell git describe --tags || echo "unknown")
 
 LDFLAGS := -X main.Version=$(APPLICATION_VERSION)
-USER_ID := `id -u $$USER`
 
 BUILD_FOLDER := target
-
 GO_BUILD := go build -v -ldflags "$(LDFLAGS)" -a
-GO_SRC := $(shell find . -name '*.go')
-PACKAGES := $(shell go list ./... | grep -v /vendor/)
-
-TEST_TARGETS = $(PACKAGES)
-COVERAGEDIR := $(BUILD_FOLDER)/test-results
 
 CURRENT_DIR = $(shell pwd)
 PATH := $(CURRENT_DIR)/bin:$(PATH)
@@ -21,10 +14,11 @@ PATH := $(CURRENT_DIR)/bin:$(PATH)
 
 all: lint test build
 
-build: $(BUILD_FOLDER)/executor
-
-$(BUILD_FOLDER)/executor: $(GO_SRC)
+build: $(BUILD_FOLDER)
 	$(GO_BUILD) -o $(BUILD_FOLDER)/executor ./cmd/executor
+
+$(BUILD_FOLDER):
+	mkdir $(BUILD_FOLDER)
 
 clean:
 	go clean -v .
@@ -44,30 +38,12 @@ lint-deps:
 	@which gometalinter.v2 > /dev/null || \
 		(go get -u -v gopkg.in/alecthomas/gometalinter.v2 && gometalinter.v2 --install)
 
-package: build
-	zip -j $(BUILD_FOLDER)/executor-linux-amd64.zip $(BUILD_FOLDER)/executor
-	chmod 0755 $(BUILD_FOLDER)/executor-linux-amd64.zip
-	chmod 0777 $(BUILD_FOLDER)
+package: $(BUILD_FOLDER)/executor
+	zip -j $(BUILD_FOLDER)/executor-$(APPLICATION_VERSION)-linux-amd64.zip $(BUILD_FOLDER)/executor
+	chmod 0755 $(BUILD_FOLDER)/executor-$(APPLICATION_VERSION)-linux-amd64.zip
 
-test: $(COVERAGEDIR)/coverage.out
+test: test-deps
+	go test -v -coverprofile=$(BUILD_FOLDER)/coverage.txt -covermode=atomic ./...
 
-$(COVERAGEDIR)/coverage.out: test-deps $(COVERAGEDIR) $(GO_SRC) $(TEST_TARGETS)
-	gover $(COVERAGEDIR) $(COVERAGEDIR)/coverage.out
-
-$(TEST_TARGETS):
-	go test -v -coverprofile=$(COVERAGEDIR)/$(shell basename $@).coverprofile $(TESTARGS) $@
-
-coveralls: test $(COVERAGEDIR)/coverage.out
-	goveralls -coverprofile=$(COVERAGEDIR)/coverage.out -service=travis-ci
-
-$(COVERAGEDIR):
-	mkdir -p $(BUILD_FOLDER)/test-results
-
-test-deps:
+test-deps: $(BUILD_FOLDER)
 	./scripts/install-consul.sh
-	@which gover > /dev/null || \
-		(go get github.com/modocache/gover)
-	@which goveralls > /dev/null || \
-		(go get github.com/mattn/goveralls)
-
-travis-ci: lint build coveralls package

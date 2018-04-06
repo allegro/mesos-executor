@@ -46,13 +46,13 @@
   revision = "1f30fe9094a513ce4c700b9a54458bbb0c96996c"
 
 [[constraint]]
-  name = "github.com/cyberdelia/go-metrics-graphite"
-  revision = "39f87cc3b432bbb898d7c643c0e93cac2bc865ad"
-
-[[constraint]]
   name = "github.com/go-logfmt/logfmt"
   version = "0.3.0"
 
 [[constraint]]
   branch = "master"
   name = "golang.org/x/time"
+
+[[constraint]]
+  name = "github.com/allegro/go-metrics-graphite"
+  revision = "d8aec135f2c1e2d0fd86f55e9b85427ba6592490"
