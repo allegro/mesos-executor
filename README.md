@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/allegro/mesos-executor.svg?branch=master)](https://travis-ci.org/allegro/mesos-executor)
 [![Go Report Card](https://goreportcard.com/badge/github.com/allegro/mesos-executor)](https://goreportcard.com/report/github.com/allegro/mesos-executor)
-[![Coverage Status](https://coveralls.io/repos/github/allegro/mesos-executor/badge.svg?branch=master)](https://coveralls.io/github/allegro/mesos-executor?branch=master)
+[![Codecov](https://codecov.io/gh/allegro/mesos-executor/branch/master/graph/badge.svg)](https://codecov.io/gh/allegro/mesos-executor)
 [![GoDoc](https://godoc.org/github.com/allegro/mesos-executor?status.svg)](https://godoc.org/github.com/allegro/mesos-executor)
 
 ![Executor](doc/img/executor-mesos.png)
