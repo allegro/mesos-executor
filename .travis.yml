@@ -2,7 +2,15 @@ language: go
 go:
   - 1.10.x
 
-script: make travis-ci
+script: 
+  - make
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
+
+before_deploy:
+  - make package
+
 deploy:
   provider: releases
   api_key:
