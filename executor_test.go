@@ -5,10 +5,9 @@ import (
 	"crypto/x509"
 	"errors"
 	"testing"
-
 	"time"
 
-	mesos "github.com/mesos/mesos-go/api/v1/lib"
+	"github.com/mesos/mesos-go/api/v1/lib"
 	"github.com/mesos/mesos-go/api/v1/lib/executor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -379,6 +378,12 @@ func TestIfNotPanicsWhenKillWithoutLaunch(t *testing.T) {
 		events <- Event{Type: Kill}
 		exec.taskEventLoop()
 		stateUpdater.AssertExpectations(t)
+	})
+}
+
+func TestIfExecutorStartsWithoutConfig(t *testing.T) {
+	assert.NotPanics(t, func() {
+		StartExecutor(Config{}, []hook.Hook{})
 	})
 }
 
