@@ -151,6 +151,32 @@ func NewExecutor(cfg Config, hooks ...hook.Hook) *Executor {
 	}
 }
 
+// StartExecutor creates a new executor instance nad starts it
+func StartExecutor(conf Config, hooks []hook.Hook) error {
+	exec := NewExecutor(sanitizeConfig(conf), hooks...)
+	return exec.Start()
+}
+
+func sanitizeConfig(conf Config) Config {
+	if conf.RandomExpirationRange <= 0 {
+		conf.RandomExpirationRange = 3 * time.Hour
+	}
+	if conf.APIPath == "" {
+		conf.APIPath = "/api/v1/executor"
+	}
+	if conf.HTTPTimeout <= 0 {
+		conf.HTTPTimeout = 10 * time.Second
+	}
+	if conf.MesosConfig.RecoveryTimeout <= 0 {
+		conf.MesosConfig.RecoveryTimeout = time.Second
+	}
+	if conf.MesosConfig.SubscriptionBackoffMax < time.Second {
+		conf.MesosConfig.SubscriptionBackoffMax = time.Second
+	}
+
+	return conf
+}
+
 // Start registers executor in Mesos agent and waits for events from it.
 func (e *Executor) Start() error {
 

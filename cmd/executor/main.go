@@ -103,6 +103,7 @@ func readConfiguration(config interface{}) {
 
 func main() {
 	log.Infof("Allegro Mesos Executor (version: %s)", Version)
+
 	cfg, err := config.FromEnv()
 	if err != nil {
 		log.WithError(err).Fatal("Failed to load Mesos configuration")
@@ -118,8 +119,8 @@ func main() {
 	Config.MesosConfig.Checkpoint = cfg.Checkpoint
 	Config.MesosConfig.RecoveryTimeout = cfg.RecoveryTimeout
 	Config.MesosConfig.SubscriptionBackoffMax = cfg.SubscriptionBackoffMax
-	exec := executor.NewExecutor(Config, createHooks()...)
-	if err := exec.Start(); err != nil {
+	err = executor.StartExecutor(Config, createHooks())
+	if err != nil {
 		log.WithError(err).Fatal("Executor exited with error")
 	}
 	log.Info("Executor exited successfully")
