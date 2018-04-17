@@ -35,3 +35,17 @@ func TestIfFiltersKeysFromScrapedJSONs(t *testing.T) {
 	assert.Equal(t, "d", entry["c"])
 	assert.Len(t, entry, 1)
 }
+
+func TestIfWrapsInDefualtValuesInvalidLogEntries(t *testing.T) {
+	reader, writer := io.Pipe()
+	scraper := JSON{}
+
+	entries := scraper.StartScraping(reader)
+	go writer.Write([]byte("ERROR my invalid format\n"))
+
+	entry := <-entries
+
+	assert.Equal(t, "ERROR my invalid format", entry["msg"])
+	assert.Equal(t, "invalid-format", entry["logger"])
+	assert.Equal(t, "INFO", entry["level"])
+}

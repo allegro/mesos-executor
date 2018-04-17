@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"io"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -26,10 +27,9 @@ func (j *JSON) StartScraping(reader io.Reader) <-chan servicelog.Entry {
 		for scanner.Scan() {
 			logEntry := servicelog.Entry{}
 			if err := json.Unmarshal(scanner.Bytes(), &logEntry); err != nil {
-				log.WithError(err).Warn("Unable to unmarshal log entry - skipping line")
-				continue
-			}
-			if j.KeyFilter != nil {
+				log.WithError(err).Debug("Unable to unmarshal log entry - wrapping in default entry")
+				logEntry = j.wrapInDefault(scanner.Bytes())
+			} else if j.KeyFilter != nil {
 				for key := range logEntry {
 					if j.KeyFilter.Match([]byte(key)) {
 						delete(logEntry, key)
@@ -42,4 +42,13 @@ func (j *JSON) StartScraping(reader io.Reader) <-chan servicelog.Entry {
 	}()
 
 	return logEntries
+}
+
+func (j *JSON) wrapInDefault(bytes []byte) servicelog.Entry {
+	return servicelog.Entry{
+		"time":   time.Now().Format(time.RFC3339Nano),
+		"level":  "INFO",
+		"logger": "invalid-format",
+		"msg":    string(bytes),
+	}
 }
