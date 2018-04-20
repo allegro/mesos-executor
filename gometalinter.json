@@ -1,7 +1,7 @@
 {
   "Aggregate": true,
   "Concurrency": 2,
-  "Cyclo": 14,
+  "Cyclo": 15,
   "Deadline": "300s",
   "DisableAll": true,
   "Enable": [
