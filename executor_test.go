@@ -363,7 +363,9 @@ func TestCertificateCheckScheduleTaskKillBeforeCertificateExpires(t *testing.T) 
 func TestIfNotPanicsWhenKillWithoutLaunch(t *testing.T) {
 	stateUpdater := new(mockUpdater)
 	stateUpdater.On("UpdateWithOptions",
-		mock.AnythingOfType("mesos.TaskID"),
+		mock.MatchedBy(func(taskID mesos.TaskID) bool {
+			return taskID.GetValue() == "taskID"
+		}),
 		mesos.TASK_KILLED,
 		mock.AnythingOfType("state.OptionalInfo")).Once()
 	events := make(chan Event, 1)
@@ -375,7 +377,7 @@ func TestIfNotPanicsWhenKillWithoutLaunch(t *testing.T) {
 	}
 
 	assert.NotPanics(t, func() {
-		events <- Event{Type: Kill}
+		events <- Event{Type: Kill, kill: executor.Event_Kill{TaskID: mesos.TaskID{Value: "taskID"}}}
 		exec.taskEventLoop()
 		stateUpdater.AssertExpectations(t)
 	})
