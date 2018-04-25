@@ -11,6 +11,11 @@ import (
 	"github.com/allegro/mesos-executor/servicelog"
 )
 
+const (
+	kilobyte = 1024
+	megabyte = 1024 * kilobyte
+)
+
 // JSON is a scraper for logs represented as JSON objects.
 type JSON struct {
 	KeyFilter Filter
@@ -21,6 +26,7 @@ type JSON struct {
 // as the passed reader does not return an io.EOF error.
 func (j *JSON) StartScraping(reader io.Reader) <-chan servicelog.Entry {
 	scanner := bufio.NewScanner(reader)
+	scanner.Buffer(make([]byte, 64*kilobyte), megabyte)
 	logEntries := make(chan servicelog.Entry)
 
 	go func() {
