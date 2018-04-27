@@ -238,7 +238,7 @@ SUBSCRIBE_LOOP:
 		}
 	}
 
-	log.Info("Trying to to send remaining state updates with %s timeout", e.config.StateUpdateWaitTimeout)
+	log.Infof("Trying to to send remaining state updates with %s timeout", e.config.StateUpdateWaitTimeout)
 	if err := e.stateUpdater.Wait(e.config.StateUpdateWaitTimeout); err != nil { // try to send remaining state updates
 		log.WithError(err).Error("Unable to send remaining state updates to Mesos agent")
 	}
@@ -281,7 +281,7 @@ func (e *Executor) handleMesosEvent(event executor.Event) error {
 	case executor.Event_ACKNOWLEDGED:
 		e.stateUpdater.Acknowledge(event.GetAcknowledged().GetUUID())
 	default:
-		log.WithField("Type", event.Type).Warn("Unknown event type. Event: %s", event.GoString())
+		log.WithField("Type", event.Type).Warnf("Unknown event type. Event: %s", event.GoString())
 	}
 
 	return nil
