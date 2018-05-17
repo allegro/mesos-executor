@@ -458,7 +458,10 @@ func (e *Executor) createOptionsForLogstashServiceLogScrapping(taskInfo mesos.Ta
 		values = append(values, []byte(ignoredKey))
 	}
 	filter := scraper.ValueFilter{Values: values}
-	scr := &scraper.JSON{KeyFilter: filter}
+	scr := &scraper.JSON{
+		KeyFilter:               filter,
+		ScrapUnmarshallableLogs: utilTaskInfo.GetLabelValue("log-scraping-all") != "",
+	}
 	apr, err := appender.LogstashAppenderFromEnv()
 	if err != nil {
 		return nil, fmt.Errorf("cannot configure service log scraping: %s", err)
