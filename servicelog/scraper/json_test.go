@@ -36,9 +36,11 @@ func TestIfFiltersKeysFromScrapedJSONs(t *testing.T) {
 	assert.Len(t, entry, 1)
 }
 
-func TestIfWrapsInDefualtValuesInvalidLogEntries(t *testing.T) {
+func TestIfWrapsInDefualtValuesInvalidLogEntriesWhenEnabled(t *testing.T) {
 	reader, writer := io.Pipe()
-	scraper := JSON{}
+	scraper := JSON{
+		ScrapUnmarshallableLogs: true,
+	}
 
 	entries := scraper.StartScraping(reader)
 	go writer.Write([]byte("ERROR my invalid format\n"))

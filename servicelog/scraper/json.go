@@ -18,7 +18,8 @@ const (
 
 // JSON is a scraper for logs represented as JSON objects.
 type JSON struct {
-	KeyFilter Filter
+	KeyFilter               Filter
+	ScrapUnmarshallableLogs bool
 }
 
 // StartScraping starts scraping logs in JSON format from given reader and sends
@@ -32,7 +33,7 @@ func (j *JSON) StartScraping(reader io.Reader) <-chan servicelog.Entry {
 	go func() {
 		for scanner.Scan() {
 			logEntry := servicelog.Entry{}
-			if err := json.Unmarshal(scanner.Bytes(), &logEntry); err != nil {
+			if err := json.Unmarshal(scanner.Bytes(), &logEntry); err != nil && j.ScrapUnmarshallableLogs {
 				log.WithError(err).Debug("Unable to unmarshal log entry - wrapping in default entry")
 				logEntry = j.wrapInDefault(scanner.Bytes())
 			} else if j.KeyFilter != nil {
