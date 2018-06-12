@@ -31,24 +31,33 @@ func (j *JSON) StartScraping(reader io.Reader) <-chan servicelog.Entry {
 	logEntries := make(chan servicelog.Entry)
 
 	go func() {
-		for scanner.Scan() {
-			logEntry := servicelog.Entry{}
-			if err := json.Unmarshal(scanner.Bytes(), &logEntry); err != nil && j.ScrapUnmarshallableLogs {
-				log.WithError(err).Debug("Unable to unmarshal log entry - wrapping in default entry")
-				logEntry = j.wrapInDefault(scanner.Bytes())
-			} else if j.KeyFilter != nil {
-				for key := range logEntry {
-					if j.KeyFilter.Match([]byte(key)) {
-						delete(logEntry, key)
-					}
-				}
-			}
-			logEntries <- logEntry
+		for {
+			err := j.scanLoop(reader, logEntries)
+			log.WithError(err).Warn("Service log scraping failed, restarting")
 		}
-		log.WithError(scanner.Err()).Error("Service log scraping failed")
 	}()
 
 	return logEntries
+}
+
+func (j *JSON) scanLoop(reader io.Reader, logEntries chan<- servicelog.Entry) error {
+	scanner := bufio.NewScanner(reader)
+	scanner.Buffer(make([]byte, 64*kilobyte), megabyte)
+	for scanner.Scan() {
+		logEntry := servicelog.Entry{}
+		if err := json.Unmarshal(scanner.Bytes(), &logEntry); err != nil && j.ScrapUnmarshallableLogs {
+			log.WithError(err).Debug("Unable to unmarshal log entry - wrapping in default entry")
+			logEntry = j.wrapInDefault(scanner.Bytes())
+		} else if j.KeyFilter != nil {
+			for key := range logEntry {
+				if j.KeyFilter.Match([]byte(key)) {
+					delete(logEntry, key)
+				}
+			}
+		}
+		logEntries <- logEntry
+	}
+	return scanner.Err()
 }
 
 func (j *JSON) wrapInDefault(bytes []byte) servicelog.Entry {
