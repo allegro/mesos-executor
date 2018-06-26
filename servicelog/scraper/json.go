@@ -3,7 +3,9 @@ package scraper
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
+	"os"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -18,6 +20,7 @@ const (
 
 // JSON is a scraper for logs represented as JSON objects.
 type JSON struct {
+	InvalidLogsWriter       io.Writer
 	KeyFilter               Filter
 	ScrapUnmarshallableLogs bool
 }
@@ -41,13 +44,21 @@ func (j *JSON) StartScraping(reader io.Reader) <-chan servicelog.Entry {
 }
 
 func (j *JSON) scanLoop(reader io.Reader, logEntries chan<- servicelog.Entry) error {
+	var invalidLogsWriter io.Writer = os.Stdout
+	if j.InvalidLogsWriter != nil {
+		invalidLogsWriter = j.InvalidLogsWriter
+	}
 	scanner := bufio.NewScanner(reader)
 	scanner.Buffer(make([]byte, 64*kilobyte), megabyte)
 	for scanner.Scan() {
 		logEntry := servicelog.Entry{}
-		if err := json.Unmarshal(scanner.Bytes(), &logEntry); err != nil && j.ScrapUnmarshallableLogs {
-			log.WithError(err).Debug("Unable to unmarshal log entry - wrapping in default entry")
-			logEntry = j.wrapInDefault(scanner.Bytes())
+		if err := json.Unmarshal(scanner.Bytes(), &logEntry); err != nil {
+			if j.ScrapUnmarshallableLogs {
+				log.WithError(err).Debug("Unable to unmarshal log entry - wrapping in default entry")
+				logEntry = j.wrapInDefault(scanner.Bytes())
+			} else {
+				fmt.Fprintf(invalidLogsWriter, "%s\n", scanner.Bytes())
+			}
 		} else if j.KeyFilter != nil {
 			for key := range logEntry {
 				if j.KeyFilter.Match([]byte(key)) {
