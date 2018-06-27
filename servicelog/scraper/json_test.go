@@ -2,10 +2,13 @@ package scraper
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"testing"
 	"time"
 
+	"github.com/allegro/mesos-executor/servicelog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -47,10 +50,11 @@ func TestIfPrintsToStdoutValuesInvalidLogEntriesWhenDisabled(t *testing.T) {
 		InvalidLogsWriter: mockStdout,
 	}
 
-	_ = scraper.StartScraping(reader)
+	entries := scraper.StartScraping(reader)
 	go writer.Write([]byte("ERROR my invalid format\n"))
-	time.Sleep(time.Millisecond)
+	err := noEntryWithTimeout(entries, time.Millisecond)
 
+	assert.NoError(t, err)
 	mockStdout.AssertExpectations(t)
 }
 
@@ -88,6 +92,34 @@ func TestIfNotFailsWithTooLongTokens(t *testing.T) {
 	assert.Equal(t, "b", entry["a"])
 	assert.Equal(t, "d", entry["c"])
 	assert.Len(t, entry, 2)
+}
+
+func TestIfIgnoresEmptyLogLines(t *testing.T) {
+	reader, writer := io.Pipe()
+	scraper := JSON{}
+
+	entries := scraper.StartScraping(reader)
+
+	go writer.Write([]byte("\n"))
+	err1 := noEntryWithTimeout(entries, time.Millisecond)
+	assert.NoError(t, err1)
+
+	go writer.Write([]byte("  \t\n"))
+	err2 := noEntryWithTimeout(entries, time.Millisecond)
+	assert.NoError(t, err2)
+}
+
+func noEntryWithTimeout(entries <-chan servicelog.Entry, timeout time.Duration) error {
+	timeoutChan := time.After(timeout)
+	select {
+	case entry, ok := <-entries:
+		if ok {
+			return fmt.Errorf("entry %s was read before timeout", entry)
+		}
+		return errors.New("channel closed before timeout")
+	case <-timeoutChan:
+		return nil
+	}
 }
 
 type mockWriter struct {
