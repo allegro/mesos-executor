@@ -58,6 +58,7 @@ func (j *JSON) scanLoop(reader io.Reader, logEntries chan<- servicelog.Entry) er
 				logEntry = j.wrapInDefault(scanner.Bytes())
 			} else {
 				fmt.Fprintf(invalidLogsWriter, "%s\n", scanner.Bytes())
+				continue
 			}
 		} else if j.KeyFilter != nil {
 			for key := range logEntry {
