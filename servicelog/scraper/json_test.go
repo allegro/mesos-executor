@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestIfScrapsLogsProperlyInJSONFormat(t *testing.T) {
@@ -34,6 +36,22 @@ func TestIfFiltersKeysFromScrapedJSONs(t *testing.T) {
 
 	assert.Equal(t, "d", entry["c"])
 	assert.Len(t, entry, 1)
+}
+
+func TestIfPrintsToStdoutValuesInvalidLogEntriesWhenDisabled(t *testing.T) {
+	mockStdout := &mockWriter{}
+	mockStdout.On("Write", []byte("ERROR my invalid format\n")).Return(0, nil).Once()
+
+	reader, writer := io.Pipe()
+	scraper := JSON{
+		InvalidLogsWriter: mockStdout,
+	}
+
+	_ = scraper.StartScraping(reader)
+	go writer.Write([]byte("ERROR my invalid format\n"))
+	time.Sleep(time.Millisecond)
+
+	mockStdout.AssertExpectations(t)
 }
 
 func TestIfWrapsInDefaultValuesInvalidLogEntriesWhenEnabled(t *testing.T) {
@@ -70,4 +88,13 @@ func TestIfNotFailsWithTooLongTokens(t *testing.T) {
 	assert.Equal(t, "b", entry["a"])
 	assert.Equal(t, "d", entry["c"])
 	assert.Len(t, entry, 2)
+}
+
+type mockWriter struct {
+	mock.Mock
+}
+
+func (w *mockWriter) Write(p []byte) (n int, err error) {
+	args := w.Called(p)
+	return args.Int(0), args.Error(1)
 }
