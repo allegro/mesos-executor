@@ -1,26 +1,28 @@
 package appender
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"time"
 
-	"github.com/allegro/mesos-executor/xio"
-	"github.com/allegro/mesos-executor/xnet"
 	"github.com/hashicorp/consul/api"
+	"github.com/json-iterator/go"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rcrowley/go-metrics"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/allegro/mesos-executor/servicelog"
+	"github.com/allegro/mesos-executor/xio"
+	"github.com/allegro/mesos-executor/xnet"
 )
 
 const (
 	logstashVersion      = 1
 	logstashConfigPrefix = "allegro_executor_servicelog_logstash"
 )
+
+var json = jsoniter.ConfigFastest
 
 type logstashConfig struct {
 	Protocol                 string `default:"tcp"`

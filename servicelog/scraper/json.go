@@ -2,12 +2,12 @@ package scraper
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"time"
 
+	"github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/allegro/mesos-executor/servicelog"
@@ -17,6 +17,8 @@ const (
 	kilobyte = 1024
 	megabyte = 1024 * kilobyte
 )
+
+var json = jsoniter.ConfigFastest
 
 // JSON is a scraper for logs represented as JSON objects.
 type JSON struct {
