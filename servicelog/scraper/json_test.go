@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -107,6 +108,25 @@ func TestIfIgnoresEmptyLogLines(t *testing.T) {
 	go writer.Write([]byte("  \t\n"))
 	err2 := noEntryWithTimeout(entries, time.Millisecond)
 	assert.NoError(t, err2)
+}
+
+func BenchmarkJSONScraping(b *testing.B) {
+	exampleLog, err := ioutil.ReadFile("testdata/log.json")
+	if err != nil {
+		b.Fatal(err)
+	}
+	reader, writer := io.Pipe()
+	scraper := JSON{}
+
+	entries := scraper.StartScraping(reader)
+	go func() {
+		for {
+			<-entries
+		}
+	}()
+	for i := 0; i < b.N; i++ {
+		writer.Write(exampleLog)
+	}
 }
 
 func noEntryWithTimeout(entries <-chan servicelog.Entry, timeout time.Duration) error {
