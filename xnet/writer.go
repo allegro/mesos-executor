@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/consul/api"
@@ -21,7 +22,7 @@ type InstanceProvider <-chan []Address
 type Sender interface {
 	// Send writes given payload to passed address. It returns number of bytes
 	// sent and error - if there was any.
-	Send(Address, []byte) (int, error)
+	Send(Address, net.Buffers) (int, error)
 
 	// Release frees all system resources allocated by the Sender. It can be
 	// called many times - usually when the pool of used addresses changes.
@@ -34,16 +35,26 @@ type Address string
 // RoundRobinWriter returns writer with round robin functionality. Every write
 // could be sent to different backend.
 func RoundRobinWriter(instanceProvider InstanceProvider, sender Sender) io.Writer {
-	return &roundRobinWriter{provider: instanceProvider, sender: sender, instances: nil}
+	return BufferedRoundRobinWriter(instanceProvider, sender, 1)
 }
 
-type roundRobinWriter struct {
-	provider  InstanceProvider
-	sender    Sender
-	instances chan Address
+// BufferedRoundRobinWriter returns writer with round robin functionality. It supports
+// batch sending of payloads to different backends.
+func BufferedRoundRobinWriter(instanceProvider InstanceProvider, sender Sender, buffSize int) io.Writer {
+	return &bufferedRoundRobinWriter{bufferSize: buffSize, provider: instanceProvider, sender: sender, instances: nil}
 }
 
-func (r *roundRobinWriter) Write(byte []byte) (int, error) {
+type bufferedRoundRobinWriter struct {
+	// TODO(medzin): add buffer flush every second, it can be a very marginal case because most applications send logs all the time
+	buffer     net.Buffers
+	bufferSize int
+	provider   InstanceProvider
+	sender     Sender
+	instances  chan Address
+	mutex      sync.Mutex
+}
+
+func (r *bufferedRoundRobinWriter) Write(byte []byte) (int, error) {
 	if r.instances == nil {
 		r.updateInstances(<-r.provider)
 	}
@@ -58,7 +69,7 @@ func (r *roundRobinWriter) Write(byte []byte) (int, error) {
 	}
 }
 
-func (r *roundRobinWriter) updateInstances(newInstances []Address) {
+func (r *bufferedRoundRobinWriter) updateInstances(newInstances []Address) {
 	r.instances = make(chan Address, len(newInstances))
 	for _, instance := range newInstances {
 		r.instances <- instance
@@ -68,13 +79,31 @@ func (r *roundRobinWriter) updateInstances(newInstances []Address) {
 	}
 }
 
-func (r *roundRobinWriter) write(payload []byte) (int, error) {
+func (r *bufferedRoundRobinWriter) write(payload []byte) (int, error) {
+	// TODO(medzin): clean the mutex mess here
+	r.mutex.Lock()
+	if len(r.buffer) < r.bufferSize {
+		r.buffer = append(r.buffer, payload)
+		if len(r.buffer) < r.bufferSize {
+			r.mutex.Unlock()
+			return len(payload), nil
+		}
+	}
+	r.mutex.Unlock()
+
 	// Read next instance from queue
 	instance := <-r.instances
 	// Enqueue instance for round robin behaviour
 	r.instances <- instance
 
-	return r.sender.Send(instance, payload)
+	go func() {
+		r.mutex.Lock()
+		buffer := r.buffer
+		r.buffer = nil
+		r.mutex.Unlock()
+		_, _ = r.sender.Send(instance, buffer)
+	}()
+	return 0, nil
 }
 
 // DiscoveryServiceInstanceProvider returns InstanceProvider that is updated with

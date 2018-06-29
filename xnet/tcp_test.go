@@ -6,6 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"net"
+
 	"github.com/allegro/mesos-executor/xnet/xnettest"
 )
 
@@ -20,15 +22,15 @@ func TestIfTCPNetworkSenderReusesConnections(t *testing.T) {
 	sender := &TCPSender{}
 	defer sender.Release()
 
-	_, err = sender.Send(Address(listener1.Addr().String()), []byte("test"))
+	_, err = sender.Send(Address(listener1.Addr().String()), net.Buffers{[]byte("test")})
 	require.NoError(t, err)
 	<-results1
 
-	_, err = sender.Send(Address(listener1.Addr().String()), []byte("test"))
+	_, err = sender.Send(Address(listener1.Addr().String()), net.Buffers{[]byte("test")})
 	require.NoError(t, err)
 	<-results1
 
-	_, err = sender.Send(Address(listener2.Addr().String()), []byte("test"))
+	_, err = sender.Send(Address(listener2.Addr().String()), net.Buffers{[]byte("test")})
 	require.NoError(t, err)
 	<-results2
 
@@ -41,7 +43,7 @@ func TestIfTCPNetworkSenderReleasesResources(t *testing.T) {
 	defer listener.Close()
 
 	sender := &TCPSender{}
-	_, err = sender.Send(Address(listener.Addr().String()), []byte("test"))
+	_, err = sender.Send(Address(listener.Addr().String()), net.Buffers{[]byte("test")})
 	require.NoError(t, err)
 	sender.Release()
 
@@ -54,7 +56,7 @@ func TestIfTCPNetworkSenderReturnsNumberOfSentBytes(t *testing.T) {
 	defer listener.Close()
 
 	sender := &TCPSender{}
-	bytesSent, err := sender.Send(Address(listener.Addr().String()), []byte("test"))
+	bytesSent, err := sender.Send(Address(listener.Addr().String()), net.Buffers{[]byte("test")})
 
 	require.NoError(t, err)
 	assert.Equal(t, len([]byte("test")), bytesSent)
@@ -64,7 +66,7 @@ func TestIfTCPNetworkSenderReturnsNumberOfSentBytes(t *testing.T) {
 func TestIfTCPNetworkSenderReturnsErrorWhenConnectionUnavailable(t *testing.T) {
 	sender := &TCPSender{}
 
-	bytesSent, err := sender.Send("198.51.100.5", []byte("test")) // see RFC 5737 for more info about this IP address
+	bytesSent, err := sender.Send("198.51.100.5", net.Buffers{[]byte("test")}) // see RFC 5737 for more info about this IP address
 
 	assert.Error(t, err)
 	assert.Zero(t, bytesSent)

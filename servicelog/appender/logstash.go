@@ -147,7 +147,7 @@ func NewConsulLogstashWriter(protocol, serviceName string, refreshInterval time.
 		}
 		sender = tcpSender
 	}
-	return xnet.RoundRobinWriter(instanceProvider, sender), nil
+	return xnet.BufferedRoundRobinWriter(instanceProvider, sender, 10), nil
 }
 
 // LogstashAppenderFromEnv creates the appender from the environment variables.

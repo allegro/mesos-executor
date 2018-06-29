@@ -13,7 +13,7 @@ type UDPSender struct {
 
 // Send sends given payload to passed address. Data is sent using UDP packets.
 // It returns number of bytes sent and error - if there was any.
-func (s *UDPSender) Send(addr Address, payload []byte) (int, error) {
+func (s *UDPSender) Send(addr Address, buffer net.Buffers) (int, error) {
 	if s.conn == nil {
 		conn, err := net.ListenUDP("udp", nil)
 		if err != nil {
@@ -27,11 +27,16 @@ func (s *UDPSender) Send(addr Address, payload []byte) (int, error) {
 		return 0, fmt.Errorf("invalid address %s: %s", addr, err)
 	}
 
-	n, err := s.conn.WriteTo(payload, udpAddr)
-	if err != nil {
-		return 0, fmt.Errorf("could not sent payload to %s: %s", addr, err)
+	var total int
+	for _, b := range buffer {
+		n, err := s.conn.WriteTo(b, udpAddr)
+		total += n
+		if err != nil {
+			return total, fmt.Errorf("could not sent payload to %s: %s", addr, err)
+		}
 	}
-	return n, nil
+
+	return total, nil
 }
 
 // Release frees system socket used by sender.

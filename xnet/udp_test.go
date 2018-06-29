@@ -12,7 +12,7 @@ import (
 func TestUDPNetworkSendShouldReturnErrorWhenConnectionUnavailable(t *testing.T) {
 	sender := &UDPSender{}
 
-	bytesSent, err := sender.Send("198.51.100.5", []byte("test")) // see RFC 5737 for more info about this IP address
+	bytesSent, err := sender.Send("198.51.100.5", [][]byte{[]byte("test")}) // see RFC 5737 for more info about this IP address
 
 	assert.Error(t, err)
 	assert.Zero(t, bytesSent)
@@ -25,7 +25,7 @@ func TestUDPNetworkSendShouldReturnNumberOfSentBytes(t *testing.T) {
 
 	sender := &UDPSender{}
 
-	bytesSent, err := sender.Send(Address(conn.LocalAddr().String()), []byte("test"))
+	bytesSent, err := sender.Send(Address(conn.LocalAddr().String()), [][]byte{[]byte("test")})
 
 	require.NoError(t, err)
 	assert.Equal(t, 4, bytesSent)

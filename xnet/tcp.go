@@ -17,7 +17,7 @@ type TCPSender struct {
 
 // Send sends given payload to passed address. Data is sent using pool of TCP
 // connections. It returns number of bytes sent and error - if there was any.
-func (s *TCPSender) Send(addr Address, payload []byte) (int, error) {
+func (s *TCPSender) Send(addr Address, payload net.Buffers) (int, error) {
 	if s.connections == nil {
 		s.connections = make(map[Address]net.Conn)
 	}
@@ -30,7 +30,7 @@ func (s *TCPSender) Send(addr Address, payload []byte) (int, error) {
 		s.connections[addr] = newConn
 		conn = newConn
 	}
-	n, err := conn.Write(payload)
+	n, err := payload.WriteTo(conn)
 	if err != nil {
 		log.WithError(err).Info("Closing TCP connection because of an error")
 		// let's be nice and at least try to close connection on our side
@@ -40,7 +40,7 @@ func (s *TCPSender) Send(addr Address, payload []byte) (int, error) {
 		}
 		delete(s.connections, addr)
 	}
-	return n, err
+	return int(n), err
 }
 
 // Release frees system sockets used by sender.

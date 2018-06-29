@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/allegro/mesos-executor/servicelog"
+	"github.com/allegro/mesos-executor/xnet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -115,5 +116,78 @@ func TestIfFailsToCreateAppenderWithInvalidOptionalConfigurationInEnv(t *testing
 			_, err := LogstashAppenderFromEnv()
 			assert.Error(t, err)
 		})
+	}
+}
+
+// func BenchmarkLogstash_Append(b *testing.B) {
+// 	ln, err := net.Listen("tcp", "127.0.0.1:0")
+// 	if err != nil {
+// 		b.Fatal(err)
+// 	}
+
+// 	go func() {
+// 		defer ln.Close()
+// 		conn, err := ln.Accept()
+// 		if err != nil {
+// 			b.Fatal(err)
+// 		}
+// 		defer conn.Close()
+
+// 		buff := make([]byte, 1024, 1024)
+// 		for {
+// 			_, err := conn.Read(buff)
+// 			if err != nil {
+// 				b.Fatal(err)
+// 			}
+// 		}
+// 	}()
+
+// 	entries := make(chan servicelog.Entry)
+// 	writer, _ := net.Dial("tcp", ln.Addr().String())
+// 	logstash, err := NewLogstash(writer)
+// 	if err != nil {
+// 		b.Fatal(err)
+// 	}
+// 	go logstash.Append(entries)
+// 	for n := 0; n < b.N; n++ {
+// 		entries <- servicelog.Entry{"msg": "message"}
+// 	}
+// }
+
+func BenchmarkLogstash_Append(b *testing.B) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	go func() {
+		defer ln.Close()
+		conn, err := ln.Accept()
+		if err != nil {
+			b.Fatal(err)
+		}
+		defer conn.Close()
+
+		buff := make([]byte, 1024, 1024)
+		for {
+			_, err := conn.Read(buff)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	}()
+
+	entries := make(chan servicelog.Entry)
+	instanceProvider := make(chan []xnet.Address, 1)
+	instanceProvider <- []xnet.Address{xnet.Address(ln.Addr().String())}
+	sender := &xnet.TCPSender{}
+	writer := xnet.BufferedRoundRobinWriter(instanceProvider, sender, 1000)
+	logstash, err := NewLogstash(writer)
+	if err != nil {
+		b.Fatal(err)
+	}
+	go logstash.Append(entries)
+	for n := 0; n < b.N; n++ {
+		entries <- servicelog.Entry{"msg": "message"}
 	}
 }

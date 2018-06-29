@@ -112,9 +112,9 @@ func TestRoundRobinShouldWalkThruAllElementsWhenNoUpdate(t *testing.T) {
 	provider <- []Address{"1", "2", "3"}
 
 	sender := &MockSender{}
-	sender.On("Send", Address("1"), []byte("x")).Return(1, nil).Twice()
-	sender.On("Send", Address("2"), []byte("x")).Return(1, nil).Twice()
-	sender.On("Send", Address("3"), []byte("x")).Return(1, nil).Twice()
+	sender.On("Send", Address("1"), net.Buffers{[]byte("x")}).Return(1, nil).Twice()
+	sender.On("Send", Address("2"), net.Buffers{[]byte("x")}).Return(1, nil).Twice()
+	sender.On("Send", Address("3"), net.Buffers{[]byte("x")}).Return(1, nil).Twice()
 	sender.On("Release").Return(nil)
 
 	writer := RoundRobinWriter(provider, sender)
@@ -132,7 +132,7 @@ func TestRoundRobinShouldStartFromTheBegginingAfterUpdate(t *testing.T) {
 	provider <- []Address{"1", "2", "3"}
 
 	sender := &MockSender{}
-	sender.On("Send", Address("1"), []byte("x")).Return(1, nil).Times(2)
+	sender.On("Send", Address("1"), net.Buffers{[]byte("x")}).Return(1, nil).Times(2)
 	sender.On("Release").Return(nil)
 
 	writer := RoundRobinWriter(provider, sender)
@@ -270,7 +270,7 @@ type MockSender struct {
 	mock.Mock
 }
 
-func (s *MockSender) Send(addr Address, payload []byte) (int, error) {
+func (s *MockSender) Send(addr Address, payload net.Buffers) (int, error) {
 	args := s.Called(addr, payload)
 	return args.Int(0), args.Error(1)
 }
