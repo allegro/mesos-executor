@@ -76,19 +76,6 @@ func TestDiscoveryServiceInstanceProviderShouldPeriodicallyUpdatesInstances(t *t
 	assert.Empty(t, ret)
 }
 
-func TestDiscoveryServiceInstanceProviderShouldUpdateInstancesWhenTheyAreEmpty(t *testing.T) {
-	ret := make(chan []Address, 1)
-	client := &StubDiscoveryServiceClient{returns: ret}
-
-	// setup expectations
-	ret <- []Address{}
-
-	provider := DiscoveryServiceInstanceProvider("service name", 1, client)
-
-	assert.Equal(t, []Address{}, <-provider)
-	assert.Empty(t, ret)
-}
-
 func TestIfUpdatesAddressesOnlyIfTheyChanged(t *testing.T) {
 	returns := make(chan []Address, 5)
 	discoveryServiceClient := &StubDiscoveryServiceClient{returns}
@@ -98,6 +85,23 @@ func TestIfUpdatesAddressesOnlyIfTheyChanged(t *testing.T) {
 	returns <- []Address{"127.0.0.1:1234", "127.0.0.1:4321"} // same as before but different order
 	returns <- []Address{"127.0.0.1:1234", "127.0.0.1:4321"} // same as before
 	returns <- []Address{"127.0.0.1:4321", "127.0.0.1:1234"} // same as before
+	returns <- []Address{"127.0.0.1:5678", "127.0.0.1:8765"} // different ports
+
+	instanceProvider := DiscoveryServiceInstanceProvider("service-name", 1, discoveryServiceClient)
+
+	assert.Equal(t, []Address{"127.0.0.1:1234", "127.0.0.1:4321"}, <-instanceProvider)
+	assert.Equal(t, []Address{"127.0.0.1:5678", "127.0.0.1:8765"}, <-instanceProvider)
+	assert.Empty(t, returns)
+}
+
+func TestIfNotUpdatesEmptyAddresses(t *testing.T) {
+	returns := make(chan []Address, 4)
+	discoveryServiceClient := &StubDiscoveryServiceClient{returns}
+
+	// setup expectations
+	returns <- []Address{"127.0.0.1:1234", "127.0.0.1:4321"} // initial instances
+	returns <- []Address{}                                   // empty pool
+	returns <- []Address{"127.0.0.1:1234", "127.0.0.1:4321"} // same as before
 	returns <- []Address{"127.0.0.1:5678", "127.0.0.1:8765"} // different ports
 
 	instanceProvider := DiscoveryServiceInstanceProvider("service-name", 1, discoveryServiceClient)
