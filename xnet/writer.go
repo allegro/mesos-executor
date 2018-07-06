@@ -94,9 +94,13 @@ func DiscoveryServiceInstanceProvider(serviceName string, interval time.Duration
 				return newInstances[i] < newInstances[j]
 			})
 			if !reflect.DeepEqual(currInstances, newInstances) {
-				log.WithField("instances", newInstances).Infof("Service %q instances in discovery changed - sending update", serviceName)
-				currInstances = newInstances
-				instancesChan <- newInstances
+				if len(newInstances) > 0 {
+					log.WithField("instances", newInstances).Infof("Service %q instances in discovery changed - sending update", serviceName)
+					currInstances = newInstances
+					instancesChan <- newInstances
+				} else {
+					log.WithField("instances", newInstances).Infof("Service %q instances in discovery changed - ignoring empty update", serviceName)
+				}
 			}
 		}
 	}()
