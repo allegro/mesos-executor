@@ -240,7 +240,7 @@ func (c *defaultClient) do(request *http.Request) (*http.Response, error) {
 			message = string(rawResponse)
 		}
 		return response, fmt.Errorf("VaaS API error at %s (HTTP %d): %s",
-			request.URL, response.StatusCode, message)
+			request.URL.Path, response.StatusCode, message)
 	}
 
 	return response, nil
