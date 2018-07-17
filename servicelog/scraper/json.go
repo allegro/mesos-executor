@@ -24,6 +24,7 @@ var json = jsoniter.ConfigFastest
 type JSON struct {
 	InvalidLogsWriter       io.Writer
 	KeyFilter               Filter
+	BufferSize              uint
 	ScrapUnmarshallableLogs bool
 }
 
@@ -33,7 +34,7 @@ type JSON struct {
 func (j *JSON) StartScraping(reader io.Reader) <-chan servicelog.Entry {
 	scanner := bufio.NewScanner(reader)
 	scanner.Buffer(make([]byte, 64*kilobyte), megabyte)
-	logEntries := make(chan servicelog.Entry)
+	logEntries := make(chan servicelog.Entry, j.BufferSize)
 
 	go func() {
 		for {
@@ -68,6 +69,10 @@ func (j *JSON) scanLoop(reader io.Reader, logEntries chan<- servicelog.Entry) er
 					delete(logEntry, key)
 				}
 			}
+		}
+		if j.BufferSize > 0 && len(logEntries) >= int(j.BufferSize) {
+			log.Warnf("Dropping logs because of a buffer overflow (buffer size %s)", j.BufferSize)
+			continue
 		}
 		logEntries <- logEntry
 	}

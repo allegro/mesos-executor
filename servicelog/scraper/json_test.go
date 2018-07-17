@@ -110,6 +110,19 @@ func TestIfIgnoresEmptyLogLines(t *testing.T) {
 	assert.NoError(t, err2)
 }
 
+func TestIfReadingIsNotBlockingAndLogsAreDroppedWhenBufferedWithOverflow(t *testing.T) {
+	reader, writer := io.Pipe()
+	scraper := JSON{
+		BufferSize: 1,
+	}
+
+	entries := scraper.StartScraping(reader)
+	writer.Write([]byte("{\"a\":\"b\", \"c\":\"d\"}\n")) // should not block
+	writer.Write([]byte("{\"a\":\"b\", \"c\":\"d\"}\n")) // should not block and should be dropped
+	writer.Write([]byte("{\"a\":\"b\", \"c\":\"d\"}\n")) // should not block and should be dropped
+
+	assert.Len(t, entries, 1)
+}
 func BenchmarkJSONScraping(b *testing.B) {
 	exampleLog, err := ioutil.ReadFile("testdata/log.json")
 	if err != nil {

@@ -460,6 +460,7 @@ func (e *Executor) createOptionsForLogstashServiceLogScrapping(taskInfo mesos.Ta
 	filter := scraper.ValueFilter{Values: values}
 	scr := &scraper.JSON{
 		KeyFilter:               filter,
+		BufferSize:              2000,
 		ScrapUnmarshallableLogs: utilTaskInfo.GetLabelValue("log-scraping-all") != "",
 	}
 	apr, err := appender.LogstashAppenderFromEnv()
