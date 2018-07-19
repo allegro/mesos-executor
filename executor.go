@@ -54,6 +54,9 @@ type Config struct {
 	// SentryDSN is an address used for sending logs to Sentry
 	SentryDSN string `split_words:"true"`
 
+	// ServicelogBufferSize sets a line buffer size used by log scraping module
+	ServicelogBufferSize uint `default:"2000" split_words:"true"`
+
 	// ServicelogIgnoreKeys is a list of ignored keys for log scraping module
 	ServicelogIgnoreKeys []string `split_words:"true"`
 
@@ -139,6 +142,7 @@ func NewExecutor(cfg Config, hooks ...hook.Hook) *Executor {
 	log.Infof("SubscriptionBackoffMax      = %s", cfg.MesosConfig.SubscriptionBackoffMax)
 	log.Infof("APIPath                     = %s", cfg.APIPath)
 	log.Infof("Debug                       = %t", cfg.Debug)
+	log.Infof("ServicelogBufferSize        = %d", cfg.ServicelogBufferSize)
 	log.Infof("ServicelogIgnoreKeys        = %s", cfg.ServicelogIgnoreKeys)
 	log.Infof("StateUpdateBufferSize       = %d", cfg.StateUpdateBufferSize)
 
@@ -460,7 +464,7 @@ func (e *Executor) createOptionsForLogstashServiceLogScrapping(taskInfo mesos.Ta
 	filter := scraper.ValueFilter{Values: values}
 	scr := &scraper.JSON{
 		KeyFilter:               filter,
-		BufferSize:              2000,
+		BufferSize:              e.config.ServicelogBufferSize,
 		ScrapUnmarshallableLogs: utilTaskInfo.GetLabelValue("log-scraping-all") != "",
 	}
 	apr, err := appender.LogstashAppenderFromEnv()
