@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/json-iterator/go"
+	"github.com/rcrowley/go-metrics"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/allegro/mesos-executor/servicelog"
@@ -22,10 +23,12 @@ var json = jsoniter.ConfigFastest
 
 // JSON is a scraper for logs represented as JSON objects.
 type JSON struct {
-	InvalidLogsWriter       io.Writer
-	KeyFilter               Filter
-	BufferSize              uint
-	ScrapUnmarshallableLogs bool
+	InvalidLogsWriter              io.Writer
+	KeyFilter                      Filter
+	BufferSize                     uint
+	ScrapUnmarshallableLogs        bool
+	droppedBecauseOfBufferOverflow metrics.Counter
+	receivedLogsTotal              metrics.Counter
 }
 
 // StartScraping starts scraping logs in JSON format from given reader and sends
@@ -35,6 +38,11 @@ func (j *JSON) StartScraping(reader io.Reader) <-chan servicelog.Entry {
 	scanner := bufio.NewScanner(reader)
 	scanner.Buffer(make([]byte, 64*kilobyte), megabyte)
 	logEntries := make(chan servicelog.Entry, j.BufferSize)
+
+	j.receivedLogsTotal = metrics.GetOrRegisterCounter(
+		"servicelog.received.Total", metrics.DefaultRegistry)
+	j.droppedBecauseOfBufferOverflow = metrics.GetOrRegisterCounter(
+		"servicelog.scrapped.dropped.BufferOverflow", metrics.DefaultRegistry)
 
 	go func() {
 		for {
@@ -54,6 +62,7 @@ func (j *JSON) scanLoop(reader io.Reader, logEntries chan<- servicelog.Entry) er
 	scanner := bufio.NewScanner(reader)
 	scanner.Buffer(make([]byte, 64*kilobyte), megabyte)
 	for scanner.Scan() {
+		j.receivedLogsTotal.Inc(1)
 		logEntry := servicelog.Entry{}
 		if err := json.Unmarshal(scanner.Bytes(), &logEntry); err != nil {
 			if j.ScrapUnmarshallableLogs {
@@ -71,7 +80,7 @@ func (j *JSON) scanLoop(reader io.Reader, logEntries chan<- servicelog.Entry) er
 			}
 		}
 		if j.BufferSize > 0 && len(logEntries) >= int(j.BufferSize) {
-			log.Warnf("Dropping logs because of a buffer overflow (buffer size %s)", j.BufferSize)
+			j.droppedBecauseOfBufferOverflow.Inc(1)
 			continue
 		}
 		logEntries <- logEntry
