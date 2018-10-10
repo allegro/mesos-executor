@@ -1,5 +1,5 @@
 [program:consul]
-command = consul agent --dev
+command = consul agent --dev -config-file "/etc/consul/config.json"
 autostart=true
 autorestart=true
 stdout_logfile=/var/log/consul/out

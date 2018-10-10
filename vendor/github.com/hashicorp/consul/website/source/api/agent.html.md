@@ -54,7 +54,7 @@ The table below shows this endpoint's support for
 
 ```text
 $ curl \
-    https://consul.rocks/v1/agent/members
+    http://127.0.0.1:8500/v1/agent/members
 ```
 
 ### Sample Response
@@ -107,7 +107,7 @@ The table below shows this endpoint's support for
 
 ```text
 $ curl \
-    https://consul.rocks/v1/agent/self
+    http://127.0.0.1:8500/v1/agent/self
 ```
 
 ### Sample Response
@@ -187,7 +187,7 @@ The table below shows this endpoint's support for
 ```text
 $ curl \
     --request PUT \
-    https://consul.rocks/v1/agent/reload
+    http://127.0.0.1:8500/v1/agent/reload
 ```
 
 ## Enable Maintenance Mode
@@ -229,7 +229,7 @@ The table below shows this endpoint's support for
 ```text
 $ curl \
     --request PUT \
-    https://consul.rocks/v1/agent/maintenance?enable=true&reason=For+API+docs
+    http://127.0.0.1:8500/v1/agent/maintenance?enable=true&reason=For+API+docs
 ```
 
 ## View Metrics
@@ -237,13 +237,18 @@ $ curl \
 This endpoint returns the configuration and member information of the local
 agent.
 
-| Method | Path                         | Produces                   |
-| ------ | ---------------------------- | -------------------------- |
-| `GET`  | `/agent/metrics`             | `application/json`         |
+| Method | Path                               | Produces                                   |
+| ------ | ---------------------------------- | ------------------------------------------ |
+| `GET`  | `/agent/metrics`                   | `application/json`                         |
+| `GET`  | `/agent/metrics?format=prometheus` | `text/plain; version=0.0.4; charset=utf-8` |
 
 This endpoint will dump the metrics for the most recent finished interval.
 For more information about metrics, see the [telemetry](/docs/agent/telemetry.html)
 page.
+
+In order to enable [Prometheus](https://prometheus.io/) support, you need to use the
+configuration directive
+[`prometheus_retention_time`](/docs/agent/options.html#telemetry-prometheus_retention_time).
 
 | Blocking Queries | Consistency Modes | ACL Required |
 | ---------------- | ----------------- | ------------ |
@@ -253,7 +258,7 @@ page.
 
 ```text
 $ curl \
-    https://consul.rocks/v1/agent/metrics
+    http://127.0.0.1:8500/v1/agent/metrics
 ```
 
 ### Sample Response
@@ -379,7 +384,7 @@ The table below shows this endpoint's support for
 
 ```text
 $ curl \
-    https://consul.rocks/v1/agent/monitor
+    http://127.0.0.1:8500/v1/agent/monitor
 ```
 
 ### Sample Response
@@ -424,7 +429,7 @@ The table below shows this endpoint's support for
 
 ```text
 $ curl \
-    https://consul.rocks/v1/agent/join/1.2.3.4
+    http://127.0.0.1:8500/v1/agent/join/1.2.3.4
 ```
 
 ## Graceful Leave and Shutdown
@@ -455,7 +460,7 @@ The table below shows this endpoint's support for
 ```text
 $ curl \
     --request PUT \
-    https://consul.rocks/v1/agent/leave
+    http://127.0.0.1:8500/v1/agent/leave
 ```
 
 ## Force Leave and Shutdown
@@ -484,7 +489,7 @@ The table below shows this endpoint's support for
 ```text
 $ curl \
     --request PUT \
-    https://consul.rocks/v1/agent/force-leave
+    http://127.0.0.1:8500/v1/agent/force-leave
 ```
 
 ## Update ACL Tokens
@@ -533,5 +538,5 @@ The table below shows this endpoint's support for
 $ curl \
     --request PUT \
     --data @payload.json \
-    https://consul.rocks/v1/agent/token/acl_token
+    http://127.0.0.1:8500/v1/agent/token/acl_token
 ```

@@ -69,7 +69,7 @@ The table below shows this endpoint's support for
 
 ```text
 $ curl \
-    https://consul.rocks/v1/kv/my-key
+    http://127.0.0.1:8500/v1/kv/my-key
 ```
 
 ### Sample Response
@@ -190,6 +190,9 @@ The table below shows this endpoint's support for
   that does not include the acquire parameter will proceed normally even if another
   session has locked the key.**
 
+    For an example of how to use the lock feature, see the [Leader Election Guide]
+    (/docs/guides/leader-election.html).
+
 - `release` `(string: "")` - Specifies to use a lock release operation. This is
   useful when paired with `?acquire=` as it allows clients to yield a lock. This
   will leave the `LockIndex` unmodified but will clear the associated `Session`
@@ -205,14 +208,14 @@ The payload is arbitrary, and is loaded directly into Consul as supplied.
 $ curl \
     --request PUT \
     --data @contents \
-    https://consul.rocks/v1/kv/my-key
+    http://127.0.0.1:8500/v1/kv/my-key
 
 # or
 
 $ curl \
     --request PUT \
     --data-binary @contents \
-    https://consul.rocks/v1/kv/my-key
+    http://127.0.0.1:8500/v1/kv/my-key
 ```
 
 ### Sample Response
@@ -255,7 +258,7 @@ The table below shows this endpoint's support for
 ```text
 $ curl \
     --request DELETE \
-    https://consul.rocks/v1/kv/my-key
+    http://127.0.0.1:8500/v1/kv/my-key
 ```
 
 ### Sample Response

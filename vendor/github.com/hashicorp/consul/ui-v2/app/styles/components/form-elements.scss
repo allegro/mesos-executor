@@ -1,0 +1,10 @@
+@import './form-elements/index';
+.type-toggle {
+  @extend %toggle;
+}
+label span {
+  @extend %user-select-none;
+}
+.has-error {
+  @extend %form-element-error;
+}

@@ -353,6 +353,32 @@ func TestIfNewHookCreatesNoopHookWhenHookDisabled(t *testing.T) {
 	require.IsType(t, hook.NoopHook{}, h)
 }
 
+func TestIfProxyHasBeenStarted(t *testing.T) {
+    //given
+
+	// Create a test Consul server
+	config, server := createTestConsulServer(t)
+	client, _ := api.NewClient(config) // #nosec
+	defer stopConsul(server)
+
+	taskInfo := prepareTaskInfo("taskId", "", "consulName", []string{"metrics"}, []mesos.Port{
+		{Number: 666},
+	})
+	proxyLabelVal := "true"
+	taskInfo.TaskInfo.Labels.Labels = append(
+		taskInfo.TaskInfo.Labels.Labels, mesos.Label{Key: "proxy", Value: &proxyLabelVal})
+	h := &Hook{config: Config{ProxyCommand: []string{"/my-proxy", "arg1"}}, client: client}
+
+	//when
+	err := h.RegisterIntoConsul(taskInfo)
+
+	//then
+	services, _, err := client.Catalog().Services(&api.QueryOptions{})
+	require.NoError(t, err)
+	require.Contains(t, services, "consulName-proxy")
+	require.Contains(t, services, "consulName")
+}
+
 func stopConsul(server *testutil.TestServer) {
 	_ = server.Stop()
 }

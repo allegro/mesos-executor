@@ -12,6 +12,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hashicorp/consul/testrpc"
+
 	"github.com/hashicorp/consul/agent/structs"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/testutil"
@@ -29,6 +31,7 @@ func TestUiIndex(t *testing.T) {
 		ui_dir = "`+uiDir+`"
 	`)
 	defer a.Shutdown()
+	testrpc.WaitForLeader(t, a.RPC, "dc1")
 
 	// Create file
 	path := filepath.Join(a.Config.UIDir, "my-file")
@@ -65,6 +68,7 @@ func TestUiNodes(t *testing.T) {
 	t.Parallel()
 	a := NewTestAgent(t.Name(), "")
 	defer a.Shutdown()
+	testrpc.WaitForLeader(t, a.RPC, "dc1")
 
 	args := &structs.RegisterRequest{
 		Datacenter: "dc1",
@@ -102,6 +106,7 @@ func TestUiNodeInfo(t *testing.T) {
 	t.Parallel()
 	a := NewTestAgent(t.Name(), "")
 	defer a.Shutdown()
+	testrpc.WaitForLeader(t, a.RPC, "dc1")
 
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/v1/internal/ui/node/%s", a.Config.NodeName), nil)
 	resp := httptest.NewRecorder()
@@ -155,10 +160,15 @@ func TestSummarizeServices(t *testing.T) {
 			Address: "127.0.0.1",
 			Services: []*structs.NodeService{
 				&structs.NodeService{
+					Kind:    structs.ServiceKindTypical,
 					Service: "api",
+					Tags:    []string{"tag1", "tag2"},
 				},
 				&structs.NodeService{
+					Kind:    structs.ServiceKindConnectProxy,
 					Service: "web",
+					Tags:    []string{},
+					Meta:    map[string]string{metaExternalSource: "k8s"},
 				},
 			},
 			Checks: []*structs.HealthCheck{
@@ -181,7 +191,10 @@ func TestSummarizeServices(t *testing.T) {
 			Address: "127.0.0.2",
 			Services: []*structs.NodeService{
 				&structs.NodeService{
+					Kind:    structs.ServiceKindConnectProxy,
 					Service: "web",
+					Tags:    []string{},
+					Meta:    map[string]string{metaExternalSource: "k8s"},
 				},
 			},
 			Checks: []*structs.HealthCheck{
@@ -197,6 +210,7 @@ func TestSummarizeServices(t *testing.T) {
 			Services: []*structs.NodeService{
 				&structs.NodeService{
 					Service: "cache",
+					Tags:    []string{},
 				},
 			},
 		},
@@ -208,7 +222,9 @@ func TestSummarizeServices(t *testing.T) {
 	}
 
 	expectAPI := &ServiceSummary{
+		Kind:           structs.ServiceKindTypical,
 		Name:           "api",
+		Tags:           []string{"tag1", "tag2"},
 		Nodes:          []string{"foo"},
 		ChecksPassing:  1,
 		ChecksWarning:  1,
@@ -219,7 +235,9 @@ func TestSummarizeServices(t *testing.T) {
 	}
 
 	expectCache := &ServiceSummary{
+		Kind:           structs.ServiceKindTypical,
 		Name:           "cache",
+		Tags:           []string{},
 		Nodes:          []string{"zip"},
 		ChecksPassing:  0,
 		ChecksWarning:  0,
@@ -230,12 +248,16 @@ func TestSummarizeServices(t *testing.T) {
 	}
 
 	expectWeb := &ServiceSummary{
-		Name:           "web",
-		Nodes:          []string{"bar", "foo"},
-		ChecksPassing:  2,
-		ChecksWarning:  0,
-		ChecksCritical: 1,
+		Kind:            structs.ServiceKindConnectProxy,
+		Name:            "web",
+		Tags:            []string{},
+		Nodes:           []string{"bar", "foo"},
+		ChecksPassing:   2,
+		ChecksWarning:   0,
+		ChecksCritical:  1,
+		ExternalSources: []string{"k8s"},
 	}
+	summary[2].externalSourceSet = nil
 	if !reflect.DeepEqual(summary[2], expectWeb) {
 		t.Fatalf("bad: %v", summary[2])
 	}

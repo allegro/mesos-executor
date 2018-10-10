@@ -1,0 +1,7 @@
+@import './tabs/index';
+main header nav:last-child {
+  @extend %tab-nav;
+}
+.tab-section {
+  @extend %tab-section;
+}

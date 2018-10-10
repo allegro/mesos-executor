@@ -1,0 +1,9 @@
+{
+  "connect": {
+    "proxy": {
+      "allow_managed_root": true,
+      "allow_managed_api_registration": true
+    }
+  },
+  "data_dir": "/var/lib/consul"
+}

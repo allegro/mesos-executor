@@ -8,7 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/consul/acl"
 	"github.com/hashicorp/consul/agent/structs"
+	"github.com/hashicorp/consul/testrpc"
 	"github.com/hashicorp/serf/coordinate"
 )
 
@@ -18,6 +20,7 @@ func TestCoordinate_Disabled_Response(t *testing.T) {
 		disable_coordinates = true
 `)
 	defer a.Shutdown()
+	testrpc.WaitForTestAgent(t, a.RPC, "dc1")
 
 	tests := []func(resp http.ResponseWriter, req *http.Request) (interface{}, error){
 		a.srv.CoordinateDatacenters,
@@ -50,6 +53,7 @@ func TestCoordinate_Datacenters(t *testing.T) {
 	t.Parallel()
 	a := NewTestAgent(t.Name(), "")
 	defer a.Shutdown()
+	testrpc.WaitForTestAgent(t, a.RPC, "dc1")
 
 	req, _ := http.NewRequest("GET", "/v1/coordinate/datacenters", nil)
 	resp := httptest.NewRecorder()
@@ -71,6 +75,7 @@ func TestCoordinate_Nodes(t *testing.T) {
 	t.Parallel()
 	a := NewTestAgent(t.Name(), "")
 	defer a.Shutdown()
+	testrpc.WaitForTestAgent(t, a.RPC, "dc1")
 
 	// Make sure an empty list is non-nil.
 	req, _ := http.NewRequest("GET", "/v1/coordinate/nodes?dc=dc1", nil)
@@ -137,7 +142,7 @@ func TestCoordinate_Nodes(t *testing.T) {
 		t.Fatalf("bad: %v", coordinates)
 	}
 
-	// Filter on a nonexistant node segment
+	// Filter on a nonexistent node segment
 	req, _ = http.NewRequest("GET", "/v1/coordinate/nodes?segment=nope", nil)
 	resp = httptest.NewRecorder()
 	obj, err = a.srv.CoordinateNodes(resp, req)
@@ -181,6 +186,7 @@ func TestCoordinate_Node(t *testing.T) {
 	t.Parallel()
 	a := NewTestAgent(t.Name(), "")
 	defer a.Shutdown()
+	testrpc.WaitForTestAgent(t, a.RPC, "dc1")
 
 	// Make sure we get a 404 with no coordinates.
 	req, _ := http.NewRequest("GET", "/v1/coordinate/node/foo?dc=dc1", nil)
@@ -244,7 +250,7 @@ func TestCoordinate_Node(t *testing.T) {
 		t.Fatalf("bad: %v", coordinates)
 	}
 
-	// Filter on a nonexistant node segment
+	// Filter on a nonexistent node segment
 	req, _ = http.NewRequest("GET", "/v1/coordinate/node/foo?segment=nope", nil)
 	resp = httptest.NewRecorder()
 	obj, err = a.srv.CoordinateNode(resp, req)
@@ -284,6 +290,7 @@ func TestCoordinate_Update(t *testing.T) {
 	t.Parallel()
 	a := NewTestAgent(t.Name(), "")
 	defer a.Shutdown()
+	testrpc.WaitForTestAgent(t, a.RPC, "dc1")
 
 	// Register the node.
 	reg := structs.RegisterRequest{
@@ -324,4 +331,33 @@ func TestCoordinate_Update(t *testing.T) {
 		coordinates[0].Node != "foo" {
 		t.Fatalf("bad: %v", coordinates)
 	}
+}
+
+func TestCoordinate_Update_ACLDeny(t *testing.T) {
+	t.Parallel()
+	a := NewTestAgent(t.Name(), TestACLConfig())
+	defer a.Shutdown()
+	testrpc.WaitForLeader(t, a.RPC, "dc1")
+
+	coord := coordinate.NewCoordinate(coordinate.DefaultConfig())
+	coord.Height = -5.0
+	body := structs.CoordinateUpdateRequest{
+		Datacenter: "dc1",
+		Node:       "foo",
+		Coord:      coord,
+	}
+
+	t.Run("no token", func(t *testing.T) {
+		req, _ := http.NewRequest("PUT", "/v1/coordinate/update", jsonReader(body))
+		if _, err := a.srv.CoordinateUpdate(nil, req); !acl.IsErrPermissionDenied(err) {
+			t.Fatalf("err: %v", err)
+		}
+	})
+
+	t.Run("valid token", func(t *testing.T) {
+		req, _ := http.NewRequest("PUT", "/v1/coordinate/update?token=root", jsonReader(body))
+		if _, err := a.srv.CoordinateUpdate(nil, req); err != nil {
+			t.Fatalf("err: %v", err)
+		}
+	})
 }

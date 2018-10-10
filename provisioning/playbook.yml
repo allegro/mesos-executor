@@ -79,6 +79,11 @@
       state: reloaded
     when: nginx_config.changed
 
+  - name: configure marathon service
+    lineinfile:
+      path: /etc/default/marathon
+      line: export MARATHON_MASTER="localhost:5050"
+
   - name: enable and start marathon service
     service:
       name: marathon
@@ -105,14 +110,40 @@
 
   - name: download and install consul
     unarchive:
-      src: https://releases.hashicorp.com/consul/0.7.5/consul_0.7.5_linux_amd64.zip
+      src: https://releases.hashicorp.com/consul/1.2.3/consul_1.2.3_linux_amd64.zip
       dest: /bin/
       remote_src: yes
+
+  - name: create consul config dir
+    file:
+      path: /etc/consul
+      state: directory
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: copy consul config
+    copy:
+      src: consul-config.json
+      dest: /etc/consul/config.json
+      owner: root
+      group: root
+      mode: 0644
+    register: consul_config_file
+
+  - name: create consul data dir
+    file:
+      path: /var/lib/consul
+      state: directory
+      owner: root
+      group: root
+      mode: 0644
 
   - name: supervise consul
     template:
       src: consul.j2
       dest: /etc/supervisor/conf.d/consul.conf
+    register: consul_supervisor_config
 
   - name: create consul log locations
     file:
@@ -124,3 +155,7 @@
       name: supervisor
       enabled: yes
       state: started
+
+  - name: reload consul
+    shell: supervisorctl reread && supervisorctl restart consul
+    when: consul_config_file.changed or consul_supervisor_config.changed

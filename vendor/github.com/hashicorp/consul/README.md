@@ -25,9 +25,16 @@ Consul provides several key features:
 * **Multi-Datacenter** - Consul is built to be datacenter aware, and can
   support any number of regions without complex configuration.
 
+* **Service Segmentation** - Consul Connect enables secure service-to-service 
+communication with automatic TLS encryption and identity-based authorization.
+
 Consul runs on Linux, Mac OS X, FreeBSD, Solaris, and Windows. A commercial
 version called [Consul Enterprise](https://www.hashicorp.com/products/consul)
 is also available.
+
+**Please note**: We take Consul's security and our users' trust very seriously. If you 
+believe you have found a security issue in Consul, please [responsibly disclose](https://www.hashicorp.com/security#vulnerability-reporting) by 
+contacting us at security@hashicorp.com.
 
 ## Quick Start
 
@@ -44,7 +51,7 @@ https://www.consul.io/docs
 ## Developing Consul
 
 If you wish to work on Consul itself, you'll first need [Go](https://golang.org)
-installed (version 1.9+ is _required_). Make sure you have Go properly installed,
+installed (version 1.10+ is _required_). Make sure you have Go properly installed,
 including setting up your [GOPATH](https://golang.org/doc/code.html#GOPATH).
 
 Next, clone this repository into `$GOPATH/src/github.com/hashicorp/consul` and
