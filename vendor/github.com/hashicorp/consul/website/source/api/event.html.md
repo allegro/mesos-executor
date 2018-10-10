@@ -63,7 +63,7 @@ Lorem ipsum dolor sit amet, consectetur adipisicing elit...
 $ curl \
     --request PUT \
     --data @payload \
-    https://consul.rocks/v1/event/fire/my-event
+    http://127.0.0.1:8500/v1/event/fire/my-event
 ```
 
 ### Sample Response
@@ -85,7 +85,7 @@ $ curl \
 
 ## List Events
 
-This endpoint returns the most recent events known by the agent. As a
+This endpoint returns the most recent events (up to 256) known by the agent. As a
 consequence of how the [event command](/docs/commands/event.html) works, each
 agent may have a different view of the events. Events are broadcast using the
 [gossip protocol](/docs/internals/gossip.html), so they have no global ordering
@@ -122,7 +122,7 @@ The table below shows this endpoint's support for
 
 ```text
 $ curl \
-    https://consul.rocks/v1/event/list
+    http://127.0.0.1:8500/v1/event/list
 ```
 
 ### Sample Response

@@ -41,7 +41,7 @@ The table below shows this endpoint's support for
 - `stale` `(bool: false)` - If the cluster does not currently have a leader an
   error will be returned. You can use the `?stale` query parameter to read the
   Raft configuration from any of the Consul servers. Not setting this will choose
-  the default consistency mode which will forward the reqest to the leader for
+  the default consistency mode which will forward the request to the leader for
   processing but not re-confirm the server is still the leader before returning
   results. See [default consistency](/api/index.html#default) for more details.
 
@@ -49,7 +49,7 @@ The table below shows this endpoint's support for
 
 ```text
 $ curl \
-    https://consul.rocks/v1/operator/raft/configuration
+    http://127.0.0.1:8500/v1/operator/raft/configuration
 ```
 
 ### Sample Response
@@ -142,5 +142,5 @@ The table below shows this endpoint's support for
 ```text
 $ curl \
     --request DELETE \
-    https://consul.rocks/v1/operator/raft/peer?address=1.2.3.4:5678
+    http://127.0.0.1:8500/v1/operator/raft/peer?address=1.2.3.4:5678
 ```

@@ -15,7 +15,7 @@
 
 [[constraint]]
   name = "github.com/hashicorp/consul"
-  version = "1.0.6"
+  version = "1.2.3"
 
 [[constraint]]
   name = "github.com/kelseyhightower/envconfig"

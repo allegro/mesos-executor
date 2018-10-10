@@ -3,7 +3,11 @@ package consul
 import (
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/hashicorp/consul/api"
 	log "github.com/sirupsen/logrus"
@@ -20,6 +24,7 @@ const (
 	// See: https://github.com/allegro/marathon-consul/blob/v1.1.0/apps/app.go#L10-L11
 	consulNameLabelKey = "consul"
 	consulTagValue     = "tag"
+	proxyLabelKey      = "proxy"
 	serviceHost        = "127.0.0.1"
 )
 
@@ -53,7 +58,8 @@ type Config struct {
 	// > common tag name added to every service registered in Consul,
 	// > should be unique for every Marathon-cluster connected to Consul
 	// https://github.com/allegro/marathon-consul/blob/1.4.2/config/config.go#L74
-	ConsulGlobalTag string `default:"marathon" envconfig:"consul_global_tag"`
+	ConsulGlobalTag string   `default:"marathon" envconfig:"consul_global_tag"`
+	ProxyCommand    []string `default:"" envconfig:"consul_proxy_command"`
 }
 
 // HandleEvent calls appropriate hook functions that correspond to supported
@@ -128,6 +134,11 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 		}
 	}
 
+	connectConfig, err := h.getConnectConfig(taskInfo)
+	if err != nil {
+		return errors.Wrap(err, "Creating Consul Connect configuration failed")
+	}
+
 	agent := h.client.Agent()
 	for _, serviceData := range instancesToRegister {
 		serviceRegistration := api.AgentServiceRegistration{
@@ -139,6 +150,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 			EnableTagOverride: false,
 			Checks:            api.AgentServiceChecks{},
 			Check:             generateHealthCheck(taskInfo.GetHealthCheck(), int(serviceData.port)),
+			Connect:           connectConfig,
 		}
 
 		if err := agent.ServiceRegister(&serviceRegistration); err != nil {
@@ -170,6 +182,39 @@ func (h *Hook) DeregisterFromConsul(taskInfo mesosutils.TaskInfo) error {
 	h.serviceInstances = ghostInstances
 
 	return nil
+}
+
+func (h *Hook) getConnectConfig(taskInfo mesosutils.TaskInfo) (*api.AgentServiceConnect, error) {
+	proxyLabel := taskInfo.FindLabel(proxyLabelKey)
+	if proxyLabel == nil || proxyLabel.GetValue() == "false" {
+		return nil, nil
+	}
+	log.Info("Starting proxy for service")
+	cmd := h.config.ProxyCommand
+	if len(cmd) == 0 || cmd[0] == "" {
+		return nil, errors.Errorf(
+			"'%s' label found, but proxy command is not set in executor configuration", proxyLabelKey)
+	}
+	log.Debugf("Proxy command: %v", h.config.ProxyCommand)
+	executable, err := os.Executable()
+	if err != nil {
+		return nil, errors.Wrap(err, "Cannot obtain executable path of current process")
+	}
+	executorPath, err := filepath.Abs(executable)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Cannot get absolute path of file '%s'", executorPath)
+	}
+	config := &api.AgentServiceConnect{
+		Native: false,
+		Proxy: &api.AgentServiceConnectProxy{
+			Command:  cmd,
+			ExecMode: api.ProxyExecModeDaemon,
+			Config: map[string]interface{}{
+				"executor_path": executorPath,
+			},
+		},
+	}
+	return config, nil
 }
 
 func getServiceLabel(port mesos.Port) (string, error) {

@@ -1,0 +1,14 @@
+@import './healthcheck-status/index';
+@import './icons/index';
+.healthcheck-status {
+  @extend %healthcheck-status;
+}
+%healthcheck-status.passing {
+  @extend %with-passing;
+}
+%healthcheck-status.warning {
+  @extend %with-warning;
+}
+%healthcheck-status.critical {
+  @extend %with-critical;
+}

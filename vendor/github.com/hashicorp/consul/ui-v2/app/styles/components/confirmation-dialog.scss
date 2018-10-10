@@ -1,0 +1,4 @@
+@import './confirmation-dialog/index';
+div.with-confirmation {
+  @extend %confirmation-dialog, %confirmation-dialog-inline;
+}

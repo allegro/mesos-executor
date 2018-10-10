@@ -7,16 +7,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/consul/agent/connect"
 	"github.com/hashicorp/consul/agent/consul/autopilot"
 	"github.com/hashicorp/consul/agent/consul/state"
 	"github.com/hashicorp/consul/agent/structs"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/lib"
 	"github.com/pascaldekloe/goe/verify"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFSM_SnapshotRestore_OSS(t *testing.T) {
 	t.Parallel()
+
+	assert := assert.New(t)
 	fsm, err := New(nil, os.Stderr)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -24,8 +28,28 @@ func TestFSM_SnapshotRestore_OSS(t *testing.T) {
 
 	// Add some state
 	fsm.state.EnsureNode(1, &structs.Node{Node: "foo", Address: "127.0.0.1"})
-	fsm.state.EnsureNode(2, &structs.Node{Node: "baz", Address: "127.0.0.2", TaggedAddresses: map[string]string{"hello": "1.2.3.4"}})
-	fsm.state.EnsureService(3, "foo", &structs.NodeService{ID: "web", Service: "web", Tags: nil, Address: "127.0.0.1", Port: 80})
+	fsm.state.EnsureNode(2, &structs.Node{Node: "baz", Address: "127.0.0.2", TaggedAddresses: map[string]string{"hello": "1.2.3.4"}, Meta: map[string]string{"testMeta": "testing123"}})
+
+	// Add a service instance with Connect config.
+	connectConf := structs.ServiceConnect{
+		Native: true,
+		Proxy: &structs.ServiceDefinitionConnectProxy{
+			Command:  []string{"foo", "bar"},
+			ExecMode: "a",
+			Config: map[string]interface{}{
+				"a": "qwer",
+				"b": 4.3,
+			},
+		},
+	}
+	fsm.state.EnsureService(3, "foo", &structs.NodeService{
+		ID:      "web",
+		Service: "web",
+		Tags:    nil,
+		Address: "127.0.0.1",
+		Port:    80,
+		Connect: connectConf,
+	})
 	fsm.state.EnsureService(4, "foo", &structs.NodeService{ID: "db", Service: "db", Tags: []string{"primary"}, Address: "127.0.0.1", Port: 5000})
 	fsm.state.EnsureService(5, "baz", &structs.NodeService{ID: "web", Service: "web", Tags: nil, Address: "127.0.0.2", Port: 80})
 	fsm.state.EnsureService(6, "baz", &structs.NodeService{ID: "db", Service: "db", Tags: []string{"secondary"}, Address: "127.0.0.2", Port: 5000})
@@ -98,6 +122,47 @@ func TestFSM_SnapshotRestore_OSS(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
+	// Intentions
+	ixn := structs.TestIntention(t)
+	ixn.ID = generateUUID()
+	ixn.RaftIndex = structs.RaftIndex{
+		CreateIndex: 14,
+		ModifyIndex: 14,
+	}
+	assert.Nil(fsm.state.IntentionSet(14, ixn))
+
+	// CA Roots
+	roots := []*structs.CARoot{
+		connect.TestCA(t, nil),
+		connect.TestCA(t, nil),
+	}
+	for _, r := range roots[1:] {
+		r.Active = false
+	}
+	ok, err := fsm.state.CARootSetCAS(15, 0, roots)
+	assert.Nil(err)
+	assert.True(ok)
+
+	ok, err = fsm.state.CASetProviderState(16, &structs.CAConsulProviderState{
+		ID:         "asdf",
+		PrivateKey: "foo",
+		RootCert:   "bar",
+	})
+	assert.Nil(err)
+	assert.True(ok)
+
+	// CA Config
+	caConfig := &structs.CAConfiguration{
+		ClusterID: "foo",
+		Provider:  "consul",
+		Config: map[string]interface{}{
+			"foo": "asdf",
+			"bar": 6.5,
+		},
+	}
+	err = fsm.state.CASetConfig(17, caConfig)
+	assert.Nil(err)
+
 	// Snapshot
 	snap, err := fsm.Snapshot()
 	if err != nil {
@@ -133,6 +198,8 @@ func TestFSM_SnapshotRestore_OSS(t *testing.T) {
 	}
 	if nodes[0].Node != "baz" ||
 		nodes[0].Address != "127.0.0.2" ||
+		len(nodes[0].Meta) != 1 ||
+		nodes[0].Meta["testMeta"] != "testing123" ||
 		len(nodes[0].TaggedAddresses) != 1 ||
 		nodes[0].TaggedAddresses["hello"] != "1.2.3.4" {
 		t.Fatalf("bad: %v", nodes[0])
@@ -155,6 +222,10 @@ func TestFSM_SnapshotRestore_OSS(t *testing.T) {
 	}
 	if fooSrv.Services["db"].Port != 5000 {
 		t.Fatalf("Bad: %v", fooSrv)
+	}
+	connectSrv := fooSrv.Services["web"]
+	if !reflect.DeepEqual(connectSrv.Connect, connectConf) {
+		t.Fatalf("got: %v, want: %v", connectSrv.Connect, connectConf)
 	}
 
 	_, checks, err := fsm2.state.NodeChecks(nil, "foo")
@@ -259,6 +330,28 @@ func TestFSM_SnapshotRestore_OSS(t *testing.T) {
 	if !reflect.DeepEqual(restoredConf, autopilotConf) {
 		t.Fatalf("bad: %#v, %#v", restoredConf, autopilotConf)
 	}
+
+	// Verify intentions are restored.
+	_, ixns, err := fsm2.state.Intentions(nil)
+	assert.Nil(err)
+	assert.Len(ixns, 1)
+	assert.Equal(ixn, ixns[0])
+
+	// Verify CA roots are restored.
+	_, roots, err = fsm2.state.CARoots(nil)
+	assert.Nil(err)
+	assert.Len(roots, 2)
+
+	// Verify provider state is restored.
+	_, state, err := fsm2.state.CAProviderState("asdf")
+	assert.Nil(err)
+	assert.Equal("foo", state.PrivateKey)
+	assert.Equal("bar", state.RootCert)
+
+	// Verify CA configuration is restored.
+	_, caConf, err := fsm2.state.CAConfig()
+	assert.Nil(err)
+	assert.Equal(caConfig, caConf)
 
 	// Snapshot
 	snap, err = fsm2.Snapshot()

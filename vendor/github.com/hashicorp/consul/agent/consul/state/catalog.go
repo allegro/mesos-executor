@@ -8,6 +8,11 @@ import (
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/types"
 	"github.com/hashicorp/go-memdb"
+	uuid "github.com/hashicorp/go-uuid"
+)
+
+const (
+	servicesTableName = "services"
 )
 
 // nodesTableSchema returns a new table schema used for storing node
@@ -86,6 +91,12 @@ func servicesTableSchema() *memdb.TableSchema {
 					Field:     "ServiceName",
 					Lowercase: true,
 				},
+			},
+			"connect": &memdb.IndexSchema{
+				Name:         "connect",
+				AllowMissing: true,
+				Unique:       false,
+				Indexer:      &IndexConnectService{},
 			},
 		},
 	}
@@ -256,6 +267,17 @@ func (s *Store) EnsureRegistration(idx uint64, req *structs.RegisterRequest) err
 	return nil
 }
 
+func (s *Store) ensureCheckIfNodeMatches(tx *memdb.Txn, idx uint64, node string, check *structs.HealthCheck) error {
+	if check.Node != node {
+		return fmt.Errorf("check node %q does not match node %q",
+			check.Node, node)
+	}
+	if err := s.ensureCheckTxn(tx, idx, check); err != nil {
+		return fmt.Errorf("failed inserting check: %s on node %q", err, check.Node)
+	}
+	return nil
+}
+
 // ensureRegistrationTxn is used to make sure a node, service, and check
 // registration is performed within a single transaction to avoid race
 // conditions on state updates.
@@ -305,21 +327,13 @@ func (s *Store) ensureRegistrationTxn(tx *memdb.Txn, idx uint64, req *structs.Re
 
 	// Add the checks, if any.
 	if req.Check != nil {
-		if req.Check.Node != req.Node {
-			return fmt.Errorf("check node %q does not match node %q",
-				req.Check.Node, req.Node)
-		}
-		if err := s.ensureCheckTxn(tx, idx, req.Check); err != nil {
-			return fmt.Errorf("failed inserting check: %s", err)
+		if err := s.ensureCheckIfNodeMatches(tx, idx, req.Node, req.Check); err != nil {
+			return err
 		}
 	}
 	for _, check := range req.Checks {
-		if check.Node != req.Node {
-			return fmt.Errorf("check node %q does not match node %q",
-				check.Node, req.Node)
-		}
-		if err := s.ensureCheckTxn(tx, idx, check); err != nil {
-			return fmt.Errorf("failed inserting check: %s", err)
+		if err := s.ensureCheckIfNodeMatches(tx, idx, req.Node, check); err != nil {
+			return err
 		}
 	}
 
@@ -340,6 +354,25 @@ func (s *Store) EnsureNode(idx uint64, node *structs.Node) error {
 	return nil
 }
 
+// ensureNoNodeWithSimilarNameTxn checks that no other node has conflict in its name
+// If allowClashWithoutID then, getting a conflict on another node without ID will be allowed
+func (s *Store) ensureNoNodeWithSimilarNameTxn(tx *memdb.Txn, node *structs.Node, allowClashWithoutID bool) error {
+	// Retrieve all of the nodes
+	enodes, err := tx.Get("nodes", "id")
+	if err != nil {
+		return fmt.Errorf("Cannot lookup all nodes: %s", err)
+	}
+	for nodeIt := enodes.Next(); nodeIt != nil; nodeIt = enodes.Next() {
+		enode := nodeIt.(*structs.Node)
+		if strings.EqualFold(node.Node, enode.Node) && node.ID != enode.ID {
+			if !(enode.ID == "" && allowClashWithoutID) {
+				return fmt.Errorf("Node name %s is reserved by node %s with name %s", node.Node, enode.ID, enode.Node)
+			}
+		}
+	}
+	return nil
+}
+
 // ensureNodeTxn is the inner function called to actually create a node
 // registration or modify an existing one in the state store. It allows
 // passing in a memdb transaction so it may be part of a larger txn.
@@ -348,18 +381,36 @@ func (s *Store) ensureNodeTxn(tx *memdb.Txn, idx uint64, node *structs.Node) err
 	// name is the same.
 	var n *structs.Node
 	if node.ID != "" {
-		existing, err := tx.First("nodes", "uuid", string(node.ID))
+		existing, err := getNodeIDTxn(tx, node.ID)
 		if err != nil {
 			return fmt.Errorf("node lookup failed: %s", err)
 		}
 		if existing != nil {
-			n = existing.(*structs.Node)
+			n = existing
 			if n.Node != node.Node {
-				return fmt.Errorf("node ID %q for node %q aliases existing node %q",
-					node.ID, node.Node, n.Node)
+				// Lets first get all nodes and check whether name do match, we do not allow clash on nodes without ID
+				dupNameError := s.ensureNoNodeWithSimilarNameTxn(tx, node, false)
+				if dupNameError != nil {
+					return fmt.Errorf("Error while renaming Node ID: %q: %s", node.ID, dupNameError)
+				}
+				// We are actually renaming a node, remove its reference first
+				err := s.deleteNodeTxn(tx, idx, n.Node)
+				if err != nil {
+					return fmt.Errorf("Error while renaming Node ID: %q from %s to %s",
+						node.ID, n.Node, node.Node)
+				}
+			}
+		} else {
+			// We allow to "steal" another node name that would have no ID
+			// It basically means that we allow upgrading a node without ID and add the ID
+			dupNameError := s.ensureNoNodeWithSimilarNameTxn(tx, node, true)
+			if dupNameError != nil {
+				return fmt.Errorf("Error while renaming Node ID: %q: %s", node.ID, dupNameError)
 			}
 		}
 	}
+	// TODO: else Node.ID == "" should be forbidden in future Consul releases
+	// See https://github.com/hashicorp/consul/pull/3983 for context
 
 	// Check for an existing node by name to support nodes with no IDs.
 	if n == nil {
@@ -367,9 +418,13 @@ func (s *Store) ensureNodeTxn(tx *memdb.Txn, idx uint64, node *structs.Node) err
 		if err != nil {
 			return fmt.Errorf("node name lookup failed: %s", err)
 		}
+
 		if existing != nil {
 			n = existing.(*structs.Node)
 		}
+		// WARNING, for compatibility reasons with tests, we do not check
+		// for case insensitive matches, which may lead to DB corruption
+		// See https://github.com/hashicorp/consul/pull/3983 for context
 	}
 
 	// Get the indexes.
@@ -411,6 +466,23 @@ func (s *Store) GetNode(id string) (uint64, *structs.Node, error) {
 	return idx, nil, nil
 }
 
+func getNodeIDTxn(tx *memdb.Txn, id types.NodeID) (*structs.Node, error) {
+	strnode := string(id)
+	uuidValue, err := uuid.ParseUUID(strnode)
+	if err != nil {
+		return nil, fmt.Errorf("node lookup by ID failed, wrong UUID: %v for '%s'", err, strnode)
+	}
+
+	node, err := tx.First("nodes", "uuid", uuidValue)
+	if err != nil {
+		return nil, fmt.Errorf("node lookup by ID failed: %s", err)
+	}
+	if node != nil {
+		return node.(*structs.Node), nil
+	}
+	return nil, nil
+}
+
 // GetNodeID is used to retrieve a node registration by node ID.
 func (s *Store) GetNodeID(id types.NodeID) (uint64, *structs.Node, error) {
 	tx := s.db.Txn(false)
@@ -420,14 +492,8 @@ func (s *Store) GetNodeID(id types.NodeID) (uint64, *structs.Node, error) {
 	idx := maxIndexTxn(tx, "nodes")
 
 	// Retrieve the node from the state store
-	node, err := tx.First("nodes", "uuid", string(id))
-	if err != nil {
-		return 0, nil, fmt.Errorf("node lookup failed: %s", err)
-	}
-	if node != nil {
-		return idx, node.(*structs.Node), nil
-	}
-	return idx, nil, nil
+	node, err := getNodeIDTxn(tx, id)
+	return idx, node, err
 }
 
 // Nodes is used to return all of the known nodes.
@@ -517,7 +583,11 @@ func (s *Store) deleteNodeTxn(tx *memdb.Txn, idx uint64, nodeName string) error 
 	}
 	var sids []string
 	for service := services.Next(); service != nil; service = services.Next() {
-		sids = append(sids, service.(*structs.ServiceNode).ServiceID)
+		svc := service.(*structs.ServiceNode)
+		sids = append(sids, svc.ServiceID)
+		if err := tx.Insert("index", &IndexEntry{serviceIndexName(svc.ServiceName), idx}); err != nil {
+			return fmt.Errorf("failed updating index: %s", err)
+		}
 	}
 
 	// Do the delete in a separate loop so we don't trash the iterator.
@@ -610,6 +680,9 @@ func (s *Store) ensureServiceTxn(tx *memdb.Txn, idx uint64, node string, svc *st
 		return fmt.Errorf("failed service lookup: %s", err)
 	}
 
+	if err = structs.ValidateMetadata(svc.Meta, false); err != nil {
+		return fmt.Errorf("Invalid Service Meta for node %s and serviceID %s: %v", node, svc.ID, err)
+	}
 	// Create the service node entry and populate the indexes. Note that
 	// conversion doesn't populate any of the node-specific information.
 	// That's always populated when we read from the state store.
@@ -636,6 +709,9 @@ func (s *Store) ensureServiceTxn(tx *memdb.Txn, idx uint64, node string, svc *st
 		return fmt.Errorf("failed inserting service: %s", err)
 	}
 	if err := tx.Insert("index", &IndexEntry{"services", idx}); err != nil {
+		return fmt.Errorf("failed updating index: %s", err)
+	}
+	if err := tx.Insert("index", &IndexEntry{serviceIndexName(svc.Service), idx}); err != nil {
 		return fmt.Errorf("failed updating index: %s", err)
 	}
 
@@ -752,16 +828,56 @@ func (s *Store) ServicesByNodeMeta(ws memdb.WatchSet, filters map[string]string)
 	return idx, results, nil
 }
 
+// maxIndexForService return the maximum Raft Index for a service
+// If the index is not set for the service, it will return:
+// - maxIndex(nodes, services) if checks is false
+// - maxIndex(nodes, services, checks) if checks is true
+func maxIndexForService(tx *memdb.Txn, serviceName string, checks bool) uint64 {
+	transaction, err := tx.First("index", "id", serviceIndexName(serviceName))
+	if err == nil {
+		if idx, ok := transaction.(*IndexEntry); ok {
+			return idx.Value
+		}
+	}
+	if checks {
+		return maxIndexTxn(tx, "nodes", "services", "checks")
+	}
+	return maxIndexTxn(tx, "nodes", "services")
+}
+
+// ConnectServiceNodes returns the nodes associated with a Connect
+// compatible destination for the given service name. This will include
+// both proxies and native integrations.
+func (s *Store) ConnectServiceNodes(ws memdb.WatchSet, serviceName string) (uint64, structs.ServiceNodes, error) {
+	return s.serviceNodes(ws, serviceName, true)
+}
+
 // ServiceNodes returns the nodes associated with a given service name.
 func (s *Store) ServiceNodes(ws memdb.WatchSet, serviceName string) (uint64, structs.ServiceNodes, error) {
+	return s.serviceNodes(ws, serviceName, false)
+}
+
+func (s *Store) serviceNodes(ws memdb.WatchSet, serviceName string, connect bool) (uint64, structs.ServiceNodes, error) {
 	tx := s.db.Txn(false)
 	defer tx.Abort()
 
 	// Get the table index.
-	idx := maxIndexTxn(tx, "nodes", "services")
+	idx := maxIndexForService(tx, serviceName, false)
+
+	// Function for lookup
+	var f func() (memdb.ResultIterator, error)
+	if !connect {
+		f = func() (memdb.ResultIterator, error) {
+			return tx.Get("services", "service", serviceName)
+		}
+	} else {
+		f = func() (memdb.ResultIterator, error) {
+			return tx.Get("services", "connect", serviceName)
+		}
+	}
 
 	// List all the services.
-	services, err := tx.Get("services", "service", serviceName)
+	services, err := f()
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed service lookup: %s", err)
 	}
@@ -787,7 +903,7 @@ func (s *Store) ServiceTagNodes(ws memdb.WatchSet, service string, tag string) (
 	defer tx.Abort()
 
 	// Get the table index.
-	idx := maxIndexTxn(tx, "nodes", "services")
+	idx := maxIndexForService(tx, service, false)
 
 	// List all the services.
 	services, err := tx.Get("services", "service", service)
@@ -827,6 +943,36 @@ func serviceTagFilter(sn *structs.ServiceNode, tag string) bool {
 
 	// If we didn't hit the tag above then we should filter.
 	return true
+}
+
+// ServiceAddressNodes returns the nodes associated with a given service, filtering
+// out services that don't match the given serviceAddress
+func (s *Store) ServiceAddressNodes(ws memdb.WatchSet, address string) (uint64, structs.ServiceNodes, error) {
+	tx := s.db.Txn(false)
+	defer tx.Abort()
+
+	// List all the services.
+	services, err := tx.Get("services", "id")
+	if err != nil {
+		return 0, nil, fmt.Errorf("failed service lookup: %s", err)
+	}
+	ws.Add(services.WatchCh())
+
+	// Gather all the services and apply the tag filter.
+	var results structs.ServiceNodes
+	for service := services.Next(); service != nil; service = services.Next() {
+		svc := service.(*structs.ServiceNode)
+		if svc.ServiceAddress == address {
+			results = append(results, svc)
+		}
+	}
+
+	// Fill in the node details.
+	results, err = s.parseServiceNodes(tx, ws, results)
+	if err != nil {
+		return 0, nil, fmt.Errorf("failed parsing service nodes: %s", err)
+	}
+	return 0, results, nil
 }
 
 // parseServiceNodes iterates over a services query and fills in the node details,
@@ -979,6 +1125,10 @@ func (s *Store) DeleteService(idx uint64, nodeName, serviceID string) error {
 	return nil
 }
 
+func serviceIndexName(name string) string {
+	return fmt.Sprintf("service.%s", name)
+}
+
 // deleteServiceTxn is the inner method called to remove a service
 // registration within an existing transaction.
 func (s *Store) deleteServiceTxn(tx *memdb.Txn, idx uint64, nodeName, serviceID string) error {
@@ -1022,6 +1172,26 @@ func (s *Store) deleteServiceTxn(tx *memdb.Txn, idx uint64, nodeName, serviceID 
 		return fmt.Errorf("failed updating index: %s", err)
 	}
 
+	svc := service.(*structs.ServiceNode)
+	if remainingService, err := tx.First("services", "service", svc.ServiceName); err == nil {
+		if remainingService != nil {
+			// We have at least one remaining service, update the index
+			if err := tx.Insert("index", &IndexEntry{serviceIndexName(svc.ServiceName), idx}); err != nil {
+				return fmt.Errorf("failed updating index: %s", err)
+			}
+		} else {
+			// There are no more service instances, cleanup the service.<serviceName> index
+			serviceIndex, err := tx.First("index", "id", serviceIndexName(svc.ServiceName))
+			if err == nil && serviceIndex != nil {
+				// we found service.<serviceName> index, garbage collect it
+				if errW := tx.Delete("index", serviceIndex); errW != nil {
+					return fmt.Errorf("[FAILED] deleting serviceIndex %s: %s", svc.ServiceName, err)
+				}
+			}
+		}
+	} else {
+		return fmt.Errorf("Could not find any service %s: %s", svc.ServiceName, err)
+	}
 	return nil
 }
 
@@ -1036,6 +1206,21 @@ func (s *Store) EnsureCheck(idx uint64, hc *structs.HealthCheck) error {
 	}
 
 	tx.Commit()
+	return nil
+}
+
+// updateAllServiceIndexesOfNode updates the Raft index of all the services associated with this node
+func (s *Store) updateAllServiceIndexesOfNode(tx *memdb.Txn, idx uint64, nodeID string) error {
+	services, err := tx.Get("services", "node", nodeID)
+	if err != nil {
+		return fmt.Errorf("failed updating services for node %s: %s", nodeID, err)
+	}
+	for service := services.Next(); service != nil; service = services.Next() {
+		svc := service.(*structs.ServiceNode).ToNodeService()
+		if err := tx.Insert("index", &IndexEntry{serviceIndexName(svc.Service), idx}); err != nil {
+			return fmt.Errorf("failed updating index: %s", err)
+		}
+	}
 	return nil
 }
 
@@ -1087,6 +1272,15 @@ func (s *Store) ensureCheckTxn(tx *memdb.Txn, idx uint64, hc *structs.HealthChec
 		svc := service.(*structs.ServiceNode)
 		hc.ServiceName = svc.ServiceName
 		hc.ServiceTags = svc.ServiceTags
+		if err = tx.Insert("index", &IndexEntry{serviceIndexName(svc.ServiceName), idx}); err != nil {
+			return fmt.Errorf("failed updating index: %s", err)
+		}
+	} else {
+		// Update the status for all the services associated with this node
+		err = s.updateAllServiceIndexesOfNode(tx, idx, hc.Node)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Delete any sessions for this check if the health is critical.
@@ -1199,8 +1393,7 @@ func (s *Store) ServiceChecksByNodeMeta(ws memdb.WatchSet, serviceName string,
 	defer tx.Abort()
 
 	// Get the table index.
-	idx := maxIndexTxn(tx, "nodes", "checks")
-
+	idx := maxIndexForService(tx, serviceName, true)
 	// Return the checks.
 	iter, err := tx.Get("checks", "service", serviceName)
 	if err != nil {
@@ -1328,6 +1521,23 @@ func (s *Store) deleteCheckTxn(tx *memdb.Txn, idx uint64, node string, checkID t
 	if hc == nil {
 		return nil
 	}
+	existing := hc.(*structs.HealthCheck)
+	if existing != nil {
+		// When no service is linked to this service, update all services of node
+		if existing.ServiceID != "" {
+			if err = tx.Insert("index", &IndexEntry{serviceIndexName(existing.ServiceName), idx}); err != nil {
+				return fmt.Errorf("failed updating index: %s", err)
+			}
+		} else {
+			err = s.updateAllServiceIndexesOfNode(tx, idx, existing.Node)
+			if err != nil {
+				return fmt.Errorf("Failed to update services linked to deleted healthcheck: %s", err)
+			}
+			if err := tx.Insert("index", &IndexEntry{"services", idx}); err != nil {
+				return fmt.Errorf("failed updating index: %s", err)
+			}
+		}
+	}
 
 	// Delete the check from the DB and update the index.
 	if err := tx.Delete("checks", hc); err != nil {
@@ -1359,14 +1569,36 @@ func (s *Store) deleteCheckTxn(tx *memdb.Txn, idx uint64, node string, checkID t
 
 // CheckServiceNodes is used to query all nodes and checks for a given service.
 func (s *Store) CheckServiceNodes(ws memdb.WatchSet, serviceName string) (uint64, structs.CheckServiceNodes, error) {
+	return s.checkServiceNodes(ws, serviceName, false)
+}
+
+// CheckConnectServiceNodes is used to query all nodes and checks for Connect
+// compatible endpoints for a given service.
+func (s *Store) CheckConnectServiceNodes(ws memdb.WatchSet, serviceName string) (uint64, structs.CheckServiceNodes, error) {
+	return s.checkServiceNodes(ws, serviceName, true)
+}
+
+func (s *Store) checkServiceNodes(ws memdb.WatchSet, serviceName string, connect bool) (uint64, structs.CheckServiceNodes, error) {
 	tx := s.db.Txn(false)
 	defer tx.Abort()
 
 	// Get the table index.
-	idx := maxIndexTxn(tx, "nodes", "services", "checks")
+	idx := maxIndexForService(tx, serviceName, true)
+
+	// Function for lookup
+	var f func() (memdb.ResultIterator, error)
+	if !connect {
+		f = func() (memdb.ResultIterator, error) {
+			return tx.Get("services", "service", serviceName)
+		}
+	} else {
+		f = func() (memdb.ResultIterator, error) {
+			return tx.Get("services", "connect", serviceName)
+		}
+	}
 
 	// Query the state store for the service.
-	iter, err := tx.Get("services", "service", serviceName)
+	iter, err := f()
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed service lookup: %s", err)
 	}
@@ -1387,7 +1619,7 @@ func (s *Store) CheckServiceTagNodes(ws memdb.WatchSet, serviceName, tag string)
 	defer tx.Abort()
 
 	// Get the table index.
-	idx := maxIndexTxn(tx, "nodes", "services", "checks")
+	idx := maxIndexForService(tx, serviceName, true)
 
 	// Query the state store for the service.
 	iter, err := tx.Get("services", "service", serviceName)

@@ -14,23 +14,17 @@ CRUD operations on nodes, services, checks, configuration, and more.
 
 ## Version Prefix
 
-All API routes are prefixed with `/v1/`.
-
-This documentation is only for the v1 API.
-
-~> **Backwards compatibility:** At the current version, Consul does not yet
-promise backwards compatibility even with the v1 prefix. We'll remove this
-warning when this policy changes. We expect to reach API stability by Consul
-1.0.
+All API routes are prefixed with `/v1/`. This documentation is only for the v1 API.
 
 ## ACLs
 
 Several endpoints in Consul use or require ACL tokens to operate. An agent
 can be configured to use a default token in requests using the `acl_token`
 configuration option. However, the token can also be specified per-request
-by using the `X-Consul-Token` request header or the `token` query string
-parameter. The request header takes precedence over the default token, and
-the query string parameter takes precedence over everything.
+by using the `X-Consul-Token` request header or Bearer header in Authorization
+header or the `token` query string parameter. The request header takes
+precedence over the default token, and the query string parameter takes
+precedence over everything.
 
 For more details about ACLs, please see the [ACL Guide](/docs/guides/acl.html).
 
@@ -46,7 +40,7 @@ Here is an example using `curl`:
 ```text
 $ curl \
     --header "X-Consul-Token: abcd1234" \
-    https://consul.rocks/v1/agent/members
+    http://127.0.0.1:8500/v1/agent/members
 ```
 
 Previously this was provided via a `?token=` query parameter. This functionality
@@ -147,7 +141,7 @@ Here is the same example using `curl`:
 $ curl \
     --request PUT \
     --data 'hello consul' \
-    https://consul.rocks/v1/kv/foo
+    http://127.0.0.1:8500/v1/kv/foo
 ```
 
 ## Translated Addresses

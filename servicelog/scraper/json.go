@@ -69,7 +69,9 @@ func (j *JSON) scanLoop(reader io.Reader, logEntries chan<- servicelog.Entry) er
 				log.WithError(err).Debug("Unable to unmarshal log entry - wrapping in default entry")
 				logEntry = j.wrapInDefault(scanner.Bytes())
 			} else {
-				fmt.Fprintf(invalidLogsWriter, "%s\n", scanner.Bytes())
+				if _, err := fmt.Fprintf(invalidLogsWriter, "%s\n", scanner.Bytes()); err != nil {
+					log.WithError(err).Warn("Fprintf failed")
+				}
 				continue
 			}
 		} else if j.KeyFilter != nil {

@@ -3,9 +3,15 @@ package local_test
 import (
 	"errors"
 	"fmt"
+	"log"
+	"os"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/hashicorp/consul/testrpc"
+
+	"github.com/hashicorp/go-memdb"
 
 	"github.com/hashicorp/consul/agent"
 	"github.com/hashicorp/consul/agent/config"
@@ -16,6 +22,8 @@ import (
 	"github.com/hashicorp/consul/testutil/retry"
 	"github.com/hashicorp/consul/types"
 	"github.com/pascaldekloe/goe/verify"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAgentAntiEntropy_Services(t *testing.T) {
@@ -23,6 +31,7 @@ func TestAgentAntiEntropy_Services(t *testing.T) {
 	a := &agent.TestAgent{Name: t.Name()}
 	a.Start()
 	defer a.Shutdown()
+	testrpc.WaitForTestAgent(t, a.RPC, "dc1")
 
 	// Register info
 	args := &structs.RegisterRequest{
@@ -38,6 +47,10 @@ func TestAgentAntiEntropy_Services(t *testing.T) {
 		Service: "mysql",
 		Tags:    []string{"master"},
 		Port:    5000,
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 1,
+		},
 	}
 	a.State.AddService(srv1, "")
 	args.Service = srv1
@@ -51,6 +64,10 @@ func TestAgentAntiEntropy_Services(t *testing.T) {
 		Service: "redis",
 		Tags:    []string{},
 		Port:    8000,
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 0,
+		},
 	}
 	a.State.AddService(srv2, "")
 
@@ -68,6 +85,10 @@ func TestAgentAntiEntropy_Services(t *testing.T) {
 		Service: "web",
 		Tags:    []string{},
 		Port:    80,
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 1,
+		},
 	}
 	a.State.AddService(srv3, "")
 
@@ -77,6 +98,10 @@ func TestAgentAntiEntropy_Services(t *testing.T) {
 		Service: "lb",
 		Tags:    []string{},
 		Port:    443,
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 0,
+		},
 	}
 	args.Service = srv4
 	if err := a.RPC("Catalog.Register", args, &out); err != nil {
@@ -90,6 +115,10 @@ func TestAgentAntiEntropy_Services(t *testing.T) {
 		Tags:    []string{},
 		Address: "127.0.0.10",
 		Port:    8000,
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 1,
+		},
 	}
 	a.State.AddService(srv5, "")
 
@@ -107,6 +136,10 @@ func TestAgentAntiEntropy_Services(t *testing.T) {
 		Service: "cache",
 		Tags:    []string{},
 		Port:    11211,
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 0,
+		},
 	}
 	a.State.SetServiceState(&local.ServiceState{
 		Service: srv6,
@@ -224,11 +257,172 @@ func TestAgentAntiEntropy_Services(t *testing.T) {
 	}
 }
 
+func TestAgentAntiEntropy_Services_ConnectProxy(t *testing.T) {
+	t.Parallel()
+
+	assert := assert.New(t)
+	a := &agent.TestAgent{Name: t.Name()}
+	a.Start()
+	defer a.Shutdown()
+	testrpc.WaitForTestAgent(t, a.RPC, "dc1")
+
+	// Register node info
+	var out struct{}
+	args := &structs.RegisterRequest{
+		Datacenter: "dc1",
+		Node:       a.Config.NodeName,
+		Address:    "127.0.0.1",
+	}
+
+	// Exists both same (noop)
+	srv1 := &structs.NodeService{
+		Kind:             structs.ServiceKindConnectProxy,
+		ID:               "mysql-proxy",
+		Service:          "mysql-proxy",
+		Port:             5000,
+		ProxyDestination: "db",
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 1,
+		},
+	}
+	a.State.AddService(srv1, "")
+	args.Service = srv1
+	assert.Nil(a.RPC("Catalog.Register", args, &out))
+
+	// Exists both, different (update)
+	srv2 := &structs.NodeService{
+		ID:               "redis-proxy",
+		Service:          "redis-proxy",
+		Port:             8000,
+		Kind:             structs.ServiceKindConnectProxy,
+		ProxyDestination: "redis",
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 0,
+		},
+	}
+	a.State.AddService(srv2, "")
+
+	srv2_mod := new(structs.NodeService)
+	*srv2_mod = *srv2
+	srv2_mod.Port = 9000
+	args.Service = srv2_mod
+	assert.Nil(a.RPC("Catalog.Register", args, &out))
+
+	// Exists local (create)
+	srv3 := &structs.NodeService{
+		ID:               "web-proxy",
+		Service:          "web-proxy",
+		Port:             80,
+		Kind:             structs.ServiceKindConnectProxy,
+		ProxyDestination: "web",
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 1,
+		},
+	}
+	a.State.AddService(srv3, "")
+
+	// Exists remote (delete)
+	srv4 := &structs.NodeService{
+		ID:               "lb-proxy",
+		Service:          "lb-proxy",
+		Port:             443,
+		Kind:             structs.ServiceKindConnectProxy,
+		ProxyDestination: "lb",
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 0,
+		},
+	}
+	args.Service = srv4
+	assert.Nil(a.RPC("Catalog.Register", args, &out))
+
+	// Exists local, in sync, remote missing (create)
+	srv5 := &structs.NodeService{
+		ID:               "cache-proxy",
+		Service:          "cache-proxy",
+		Port:             11211,
+		Kind:             structs.ServiceKindConnectProxy,
+		ProxyDestination: "cache-proxy",
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 1,
+		},
+	}
+	a.State.SetServiceState(&local.ServiceState{
+		Service: srv5,
+		InSync:  true,
+	})
+
+	assert.Nil(a.State.SyncFull())
+
+	var services structs.IndexedNodeServices
+	req := structs.NodeSpecificRequest{
+		Datacenter: "dc1",
+		Node:       a.Config.NodeName,
+	}
+	assert.Nil(a.RPC("Catalog.NodeServices", &req, &services))
+
+	// We should have 5 services (consul included)
+	assert.Len(services.NodeServices.Services, 5)
+
+	// All the services should match
+	for id, serv := range services.NodeServices.Services {
+		serv.CreateIndex, serv.ModifyIndex = 0, 0
+		switch id {
+		case "mysql-proxy":
+			assert.Equal(srv1, serv)
+		case "redis-proxy":
+			assert.Equal(srv2, serv)
+		case "web-proxy":
+			assert.Equal(srv3, serv)
+		case "cache-proxy":
+			assert.Equal(srv5, serv)
+		case structs.ConsulServiceID:
+			// ignore
+		default:
+			t.Fatalf("unexpected service: %v", id)
+		}
+	}
+
+	assert.Nil(servicesInSync(a.State, 4))
+
+	// Remove one of the services
+	a.State.RemoveService("cache-proxy")
+	assert.Nil(a.State.SyncFull())
+	assert.Nil(a.RPC("Catalog.NodeServices", &req, &services))
+
+	// We should have 4 services (consul included)
+	assert.Len(services.NodeServices.Services, 4)
+
+	// All the services should match
+	for id, serv := range services.NodeServices.Services {
+		serv.CreateIndex, serv.ModifyIndex = 0, 0
+		switch id {
+		case "mysql-proxy":
+			assert.Equal(srv1, serv)
+		case "redis-proxy":
+			assert.Equal(srv2, serv)
+		case "web-proxy":
+			assert.Equal(srv3, serv)
+		case structs.ConsulServiceID:
+			// ignore
+		default:
+			t.Fatalf("unexpected service: %v", id)
+		}
+	}
+
+	assert.Nil(servicesInSync(a.State, 3))
+}
+
 func TestAgentAntiEntropy_EnableTagOverride(t *testing.T) {
 	t.Parallel()
 	a := &agent.TestAgent{Name: t.Name()}
 	a.Start()
 	defer a.Shutdown()
+	testrpc.WaitForTestAgent(t, a.RPC, "dc1")
 
 	args := &structs.RegisterRequest{
 		Datacenter: "dc1",
@@ -244,6 +438,10 @@ func TestAgentAntiEntropy_EnableTagOverride(t *testing.T) {
 		Tags:              []string{"tag1"},
 		Port:              6100,
 		EnableTagOverride: true,
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 1,
+		},
 	}
 	a.State.AddService(srv1, "")
 
@@ -254,6 +452,10 @@ func TestAgentAntiEntropy_EnableTagOverride(t *testing.T) {
 		Tags:              []string{"tag2"},
 		Port:              6200,
 		EnableTagOverride: false,
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 1,
+		},
 	}
 	a.State.AddService(srv2, "")
 
@@ -271,6 +473,10 @@ func TestAgentAntiEntropy_EnableTagOverride(t *testing.T) {
 		Tags:              []string{"tag1_mod"},
 		Port:              7100,
 		EnableTagOverride: true,
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 1,
+		},
 	}
 	if err := a.RPC("Catalog.Register", args, &out); err != nil {
 		t.Fatalf("err: %v", err)
@@ -282,6 +488,10 @@ func TestAgentAntiEntropy_EnableTagOverride(t *testing.T) {
 		Tags:              []string{"tag2_mod"},
 		Port:              7200,
 		EnableTagOverride: false,
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 0,
+		},
 	}
 	if err := a.RPC("Catalog.Register", args, &out); err != nil {
 		t.Fatalf("err: %v", err)
@@ -315,6 +525,10 @@ func TestAgentAntiEntropy_EnableTagOverride(t *testing.T) {
 				Tags:              []string{"tag1_mod"},
 				Port:              6100,
 				EnableTagOverride: true,
+				Weights: &structs.Weights{
+					Passing: 1,
+					Warning: 1,
+				},
 			}
 			if !verify.Values(t, "", got, want) {
 				t.FailNow()
@@ -340,6 +554,7 @@ func TestAgentAntiEntropy_Services_WithChecks(t *testing.T) {
 	t.Parallel()
 	a := agent.NewTestAgent(t.Name(), "")
 	defer a.Shutdown()
+	testrpc.WaitForTestAgent(t, a.RPC, "dc1")
 
 	{
 		// Single check
@@ -474,6 +689,7 @@ func TestAgentAntiEntropy_Services_ACLDeny(t *testing.T) {
 		acl_enforce_version_8 = true`}
 	a.Start()
 	defer a.Shutdown()
+	testrpc.WaitForLeader(t, a.RPC, "dc1")
 
 	// Create the ACL
 	arg := structs.ACLRequest{
@@ -499,6 +715,10 @@ func TestAgentAntiEntropy_Services_ACLDeny(t *testing.T) {
 		Service: "mysql",
 		Tags:    []string{"master"},
 		Port:    5000,
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 1,
+		},
 	}
 	a.State.AddService(srv1, token)
 
@@ -508,6 +728,10 @@ func TestAgentAntiEntropy_Services_ACLDeny(t *testing.T) {
 		Service: "api",
 		Tags:    []string{"foo"},
 		Port:    5001,
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 0,
+		},
 	}
 	a.State.AddService(srv2, token)
 
@@ -613,6 +837,7 @@ func TestAgentAntiEntropy_Checks(t *testing.T) {
 	a.Start()
 	defer a.Shutdown()
 
+	testrpc.WaitForTestAgent(t, a.RPC, "dc1")
 	// Register info
 	args := &structs.RegisterRequest{
 		Datacenter: "dc1",
@@ -802,17 +1027,20 @@ func TestAgentAntiEntropy_Checks(t *testing.T) {
 
 func TestAgentAntiEntropy_Checks_ACLDeny(t *testing.T) {
 	t.Parallel()
+	dc := "dc1"
 	a := &agent.TestAgent{Name: t.Name(), HCL: `
-		acl_datacenter = "dc1"
+		acl_datacenter = "` + dc + `"
 		acl_master_token = "root"
 		acl_default_policy = "deny"
 		acl_enforce_version_8 = true`}
 	a.Start()
 	defer a.Shutdown()
 
+	testrpc.WaitForLeader(t, a.RPC, dc)
+
 	// Create the ACL
 	arg := structs.ACLRequest{
-		Datacenter: "dc1",
+		Datacenter: dc,
 		Op:         structs.ACLSet,
 		ACL: structs.ACL{
 			Name:  "User token",
@@ -834,6 +1062,10 @@ func TestAgentAntiEntropy_Checks_ACLDeny(t *testing.T) {
 		Service: "mysql",
 		Tags:    []string{"master"},
 		Port:    5000,
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 1,
+		},
 	}
 	a.State.AddService(srv1, "root")
 	srv2 := &structs.NodeService{
@@ -841,6 +1073,10 @@ func TestAgentAntiEntropy_Checks_ACLDeny(t *testing.T) {
 		Service: "api",
 		Tags:    []string{"foo"},
 		Port:    5001,
+		Weights: &structs.Weights{
+			Passing: 1,
+			Warning: 1,
+		},
 	}
 	a.State.AddService(srv2, "root")
 
@@ -851,7 +1087,7 @@ func TestAgentAntiEntropy_Checks_ACLDeny(t *testing.T) {
 	// Verify that we are in sync
 	{
 		req := structs.NodeSpecificRequest{
-			Datacenter: "dc1",
+			Datacenter: dc,
 			Node:       a.Config.NodeName,
 			QueryOptions: structs.QueryOptions{
 				Token: "root",
@@ -921,7 +1157,7 @@ func TestAgentAntiEntropy_Checks_ACLDeny(t *testing.T) {
 
 	// Verify that we are in sync
 	req := structs.NodeSpecificRequest{
-		Datacenter: "dc1",
+		Datacenter: dc,
 		Node:       a.Config.NodeName,
 		QueryOptions: structs.QueryOptions{
 			Token: "root",
@@ -967,7 +1203,7 @@ func TestAgentAntiEntropy_Checks_ACLDeny(t *testing.T) {
 	// Verify that we are in sync
 	{
 		req := structs.NodeSpecificRequest{
-			Datacenter: "dc1",
+			Datacenter: dc,
 			Node:       a.Config.NodeName,
 			QueryOptions: structs.QueryOptions{
 				Token: "root",
@@ -1016,6 +1252,7 @@ func TestAgent_UpdateCheck_DiscardOutput(t *testing.T) {
 		check_update_interval = "0s" # set to "0s" since otherwise output checks are deferred
 	`)
 	defer a.Shutdown()
+	testrpc.WaitForLeader(t, a.RPC, "dc1")
 
 	inSync := func(id string) bool {
 		s := a.State.CheckState(types.CheckID(id))
@@ -1066,6 +1303,7 @@ func TestAgentAntiEntropy_Check_DeferSync(t *testing.T) {
 	`}
 	a.Start()
 	defer a.Shutdown()
+	testrpc.WaitForTestAgent(t, a.RPC, "dc1")
 
 	// Create a check
 	check := &structs.HealthCheck{
@@ -1256,6 +1494,7 @@ func TestAgentAntiEntropy_NodeInfo(t *testing.T) {
 		}`}
 	a.Start()
 	defer a.Shutdown()
+	testrpc.WaitForLeader(t, a.RPC, "dc1")
 
 	// Register info
 	args := &structs.RegisterRequest{
@@ -1460,6 +1699,57 @@ func TestAgent_AddCheckFailure(t *testing.T) {
 	}
 }
 
+func TestAgent_AliasCheck(t *testing.T) {
+	t.Parallel()
+
+	require := require.New(t)
+	cfg := config.DefaultRuntimeConfig(`bind_addr = "127.0.0.1" data_dir = "dummy"`)
+	l := local.NewState(agent.LocalConfig(cfg), nil, new(token.Store))
+	l.TriggerSyncChanges = func() {}
+
+	// Add checks
+	require.NoError(l.AddService(&structs.NodeService{Service: "s1"}, ""))
+	require.NoError(l.AddService(&structs.NodeService{Service: "s2"}, ""))
+	require.NoError(l.AddCheck(&structs.HealthCheck{CheckID: types.CheckID("c1"), ServiceID: "s1"}, ""))
+	require.NoError(l.AddCheck(&structs.HealthCheck{CheckID: types.CheckID("c2"), ServiceID: "s2"}, ""))
+
+	// Add an alias
+	notifyCh := make(chan struct{}, 1)
+	require.NoError(l.AddAliasCheck(types.CheckID("a1"), "s1", notifyCh))
+
+	// Update and verify we get notified
+	l.UpdateCheck(types.CheckID("c1"), api.HealthCritical, "")
+	select {
+	case <-notifyCh:
+	default:
+		t.Fatal("notify not received")
+	}
+
+	// Update again and verify we do not get notified
+	l.UpdateCheck(types.CheckID("c1"), api.HealthCritical, "")
+	select {
+	case <-notifyCh:
+		t.Fatal("notify received")
+	default:
+	}
+
+	// Update other check and verify we do not get notified
+	l.UpdateCheck(types.CheckID("c2"), api.HealthCritical, "")
+	select {
+	case <-notifyCh:
+		t.Fatal("notify received")
+	default:
+	}
+
+	// Update change and verify we get notified
+	l.UpdateCheck(types.CheckID("c1"), api.HealthPassing, "")
+	select {
+	case <-notifyCh:
+	default:
+		t.Fatal("notify not received")
+	}
+}
+
 func TestAgent_sendCoordinate(t *testing.T) {
 	t.Parallel()
 	a := agent.NewTestAgent(t.Name(), `
@@ -1474,6 +1764,7 @@ func TestAgent_sendCoordinate(t *testing.T) {
 		}
 	`)
 	defer a.Shutdown()
+	testrpc.WaitForLeader(t, a.RPC, "dc1")
 
 	t.Logf("%d %d %s",
 		a.Config.ConsulCoordinateUpdateBatchSize,
@@ -1523,4 +1814,264 @@ func checksInSync(state *local.State, wantChecks int) error {
 		}
 	}
 	return nil
+}
+
+func TestStateProxyManagement(t *testing.T) {
+	t.Parallel()
+
+	state := local.NewState(local.Config{
+		ProxyBindMinPort: 20000,
+		ProxyBindMaxPort: 20001,
+	}, log.New(os.Stderr, "", log.LstdFlags), &token.Store{})
+
+	// Stub state syncing
+	state.TriggerSyncChanges = func() {}
+
+	p1 := structs.ConnectManagedProxy{
+		ExecMode:        structs.ProxyExecModeDaemon,
+		Command:         []string{"consul", "connect", "proxy"},
+		TargetServiceID: "web",
+	}
+
+	require := require.New(t)
+	assert := assert.New(t)
+
+	_, err := state.AddProxy(&p1, "fake-token", "")
+	require.Error(err, "should fail as the target service isn't registered")
+
+	// Sanity check done, lets add a couple of target services to the state
+	err = state.AddService(&structs.NodeService{
+		Service: "web",
+	}, "fake-token-web")
+	require.NoError(err)
+	err = state.AddService(&structs.NodeService{
+		Service: "cache",
+	}, "fake-token-cache")
+	require.NoError(err)
+	require.NoError(err)
+	err = state.AddService(&structs.NodeService{
+		Service: "db",
+	}, "fake-token-db")
+	require.NoError(err)
+
+	// Should work now
+	pstate, err := state.AddProxy(&p1, "fake-token", "")
+	require.NoError(err)
+
+	svc := pstate.Proxy.ProxyService
+	assert.Equal("web-proxy", svc.ID)
+	assert.Equal("web-proxy", svc.Service)
+	assert.Equal(structs.ServiceKindConnectProxy, svc.Kind)
+	assert.Equal("web", svc.ProxyDestination)
+	assert.Equal("", svc.Address, "should have empty address by default")
+	// Port is non-deterministic but could be either of 20000 or 20001
+	assert.Contains([]int{20000, 20001}, svc.Port)
+
+	{
+		// Re-registering same proxy again should not pick a random port but re-use
+		// the assigned one. It should also keep the same proxy token since we don't
+		// want to force restart for config change.
+		pstateDup, err := state.AddProxy(&p1, "fake-token", "")
+		require.NoError(err)
+		svcDup := pstateDup.Proxy.ProxyService
+
+		assert.Equal("web-proxy", svcDup.ID)
+		assert.Equal("web-proxy", svcDup.Service)
+		assert.Equal(structs.ServiceKindConnectProxy, svcDup.Kind)
+		assert.Equal("web", svcDup.ProxyDestination)
+		assert.Equal("", svcDup.Address, "should have empty address by default")
+		// Port must be same as before
+		assert.Equal(svc.Port, svcDup.Port)
+		// Same ProxyToken
+		assert.Equal(pstate.ProxyToken, pstateDup.ProxyToken)
+	}
+
+	// Let's register a notifier now
+	notifyCh := make(chan struct{}, 1)
+	state.NotifyProxy(notifyCh)
+	defer state.StopNotifyProxy(notifyCh)
+	assert.Empty(notifyCh)
+	drainCh(notifyCh)
+
+	// Second proxy should claim other port
+	p2 := p1
+	p2.TargetServiceID = "cache"
+	pstate2, err := state.AddProxy(&p2, "fake-token", "")
+	require.NoError(err)
+	svc2 := pstate2.Proxy.ProxyService
+	assert.Contains([]int{20000, 20001}, svc2.Port)
+	assert.NotEqual(svc.Port, svc2.Port)
+
+	// Should have a notification
+	assert.NotEmpty(notifyCh)
+	drainCh(notifyCh)
+
+	// Store this for later
+	p2token := state.Proxy(svc2.ID).ProxyToken
+
+	// Third proxy should fail as all ports are used
+	p3 := p1
+	p3.TargetServiceID = "db"
+	_, err = state.AddProxy(&p3, "fake-token", "")
+	require.Error(err)
+
+	// Should have a notification but we'll do nothing so that the next
+	// receive should block (we set cap == 1 above)
+
+	// But if we set a port explicitly it should be OK
+	p3.Config = map[string]interface{}{
+		"bind_port":    1234,
+		"bind_address": "0.0.0.0",
+	}
+	pstate3, err := state.AddProxy(&p3, "fake-token", "")
+	require.NoError(err)
+	svc3 := pstate3.Proxy.ProxyService
+	require.Equal("0.0.0.0", svc3.Address)
+	require.Equal(1234, svc3.Port)
+
+	// Should have a notification
+	assert.NotEmpty(notifyCh)
+	drainCh(notifyCh)
+
+	// Update config of an already registered proxy should work
+	p3updated := p3
+	p3updated.Config["foo"] = "bar"
+	// Setup multiple watchers who should all witness the change
+	gotP3 := state.Proxy(svc3.ID)
+	require.NotNil(gotP3)
+	var ws memdb.WatchSet
+	ws.Add(gotP3.WatchCh)
+	pstate3, err = state.AddProxy(&p3updated, "fake-token", "")
+	require.NoError(err)
+	svc3 = pstate3.Proxy.ProxyService
+	require.Equal("0.0.0.0", svc3.Address)
+	require.Equal(1234, svc3.Port)
+	gotProxy3 := state.Proxy(svc3.ID)
+	require.NotNil(gotProxy3)
+	require.Equal(p3updated.Config, gotProxy3.Proxy.Config)
+	assert.False(ws.Watch(time.After(500*time.Millisecond)),
+		"watch should have fired so ws.Watch should not timeout")
+
+	drainCh(notifyCh)
+
+	// Remove one of the auto-assigned proxies
+	_, err = state.RemoveProxy(svc2.ID)
+	require.NoError(err)
+
+	// Should have a notification
+	assert.NotEmpty(notifyCh)
+	drainCh(notifyCh)
+
+	// Should be able to create a new proxy for that service with the port (it
+	// should have been "freed").
+	p4 := p2
+	pstate4, err := state.AddProxy(&p4, "fake-token", "")
+	require.NoError(err)
+	svc4 := pstate4.Proxy.ProxyService
+	assert.Contains([]int{20000, 20001}, svc2.Port)
+	assert.Equal(svc4.Port, svc2.Port, "should get the same port back that we freed")
+
+	// Remove a proxy that doesn't exist should error
+	_, err = state.RemoveProxy("nope")
+	require.Error(err)
+
+	assert.Equal(&p4, state.Proxy(p4.ProxyService.ID).Proxy,
+		"should fetch the right proxy details")
+	assert.Nil(state.Proxy("nope"))
+
+	proxies := state.Proxies()
+	assert.Len(proxies, 3)
+	assert.Equal(&p1, proxies[svc.ID].Proxy)
+	assert.Equal(&p4, proxies[svc4.ID].Proxy)
+	assert.Equal(&p3, proxies[svc3.ID].Proxy)
+
+	tokens := make([]string, 4)
+	tokens[0] = state.Proxy(svc.ID).ProxyToken
+	// p2 not registered anymore but lets make sure p4 got a new token when it
+	// re-registered with same ID.
+	tokens[1] = p2token
+	tokens[2] = state.Proxy(svc2.ID).ProxyToken
+	tokens[3] = state.Proxy(svc3.ID).ProxyToken
+
+	// Quick check all are distinct
+	for i := 0; i < len(tokens)-1; i++ {
+		assert.Len(tokens[i], 36) // Sanity check for UUIDish thing.
+		for j := i + 1; j < len(tokens); j++ {
+			assert.NotEqual(tokens[i], tokens[j], "tokens for proxy %d and %d match",
+				i+1, j+1)
+		}
+	}
+}
+
+// Tests the logic for retaining tokens and ports through restore (i.e.
+// proxy-service already restored and token passed in externally)
+func TestStateProxyRestore(t *testing.T) {
+	t.Parallel()
+
+	state := local.NewState(local.Config{
+		// Wide random range to make it very unlikely to pass by chance
+		ProxyBindMinPort: 10000,
+		ProxyBindMaxPort: 20000,
+	}, log.New(os.Stderr, "", log.LstdFlags), &token.Store{})
+
+	// Stub state syncing
+	state.TriggerSyncChanges = func() {}
+
+	webSvc := structs.NodeService{
+		Service: "web",
+	}
+
+	p1 := structs.ConnectManagedProxy{
+		ExecMode:        structs.ProxyExecModeDaemon,
+		Command:         []string{"consul", "connect", "proxy"},
+		TargetServiceID: "web",
+	}
+
+	p2 := p1
+
+	require := require.New(t)
+	assert := assert.New(t)
+
+	// Add a target service
+	require.NoError(state.AddService(&webSvc, "fake-token-web"))
+
+	// Add the proxy for first time to get the proper service definition to
+	// register
+	pstate, err := state.AddProxy(&p1, "fake-token", "")
+	require.NoError(err)
+
+	// Now start again with a brand new state
+	state2 := local.NewState(local.Config{
+		// Wide random range to make it very unlikely to pass by chance
+		ProxyBindMinPort: 10000,
+		ProxyBindMaxPort: 20000,
+	}, log.New(os.Stderr, "", log.LstdFlags), &token.Store{})
+
+	// Stub state syncing
+	state2.TriggerSyncChanges = func() {}
+
+	// Register the target service
+	require.NoError(state2.AddService(&webSvc, "fake-token-web"))
+
+	// "Restore" the proxy service
+	require.NoError(state.AddService(p1.ProxyService, "fake-token-web"))
+
+	// Now we can AddProxy with the "restored" token
+	pstate2, err := state.AddProxy(&p2, "fake-token", pstate.ProxyToken)
+	require.NoError(err)
+
+	// Check it still has the same port and token as before
+	assert.Equal(pstate.ProxyToken, pstate2.ProxyToken)
+	assert.Equal(p1.ProxyService.Port, p2.ProxyService.Port)
+}
+
+// drainCh drains a channel by reading messages until it would block.
+func drainCh(ch chan struct{}) {
+	for {
+		select {
+		case <-ch:
+		default:
+			return
+		}
+	}
 }
