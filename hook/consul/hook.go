@@ -193,7 +193,7 @@ func (h *Hook) getConnectConfig(taskInfo mesosutils.TaskInfo) (*api.AgentService
 	cmd := h.config.ProxyCommand
 	if len(cmd) == 0 || cmd[0] == "" {
 		return nil, errors.Errorf(
-			"'%s' label found, but proxy command is not set in executor configuration", proxyLabel)
+			"'%s' label found, but proxy command is not set in executor configuration", proxyLabelKey)
 	}
 	log.Debugf("Proxy command: %v", h.config.ProxyCommand)
 	executable, err := os.Executable()

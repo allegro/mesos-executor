@@ -354,7 +354,7 @@ func TestIfNewHookCreatesNoopHookWhenHookDisabled(t *testing.T) {
 }
 
 func TestIfProxyHasBeenStarted(t *testing.T) {
-    //given
+	//given
 
 	// Create a test Consul server
 	config, server := createTestConsulServer(t)
@@ -377,6 +377,29 @@ func TestIfProxyHasBeenStarted(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, services, "consulName-proxy")
 	require.Contains(t, services, "consulName")
+}
+
+func TestIfErrorWhenProxyCommandNotFound(t *testing.T) {
+	//given
+
+	// Create a test Consul server
+	config, server := createTestConsulServer(t)
+	client, _ := api.NewClient(config) // #nosec
+	defer stopConsul(server)
+
+	taskInfo := prepareTaskInfo("taskId", "", "consulName", []string{"metrics"}, []mesos.Port{
+		{Number: 666},
+	})
+	proxyLabelVal := "true"
+	taskInfo.TaskInfo.Labels.Labels = append(
+		taskInfo.TaskInfo.Labels.Labels, mesos.Label{Key: "proxy", Value: &proxyLabelVal})
+	h := &Hook{config: Config{ProxyCommand: []string{}}, client: client}
+
+	//when
+	err := h.RegisterIntoConsul(taskInfo)
+
+	//then
+	require.EqualError(t, err, "Creating Consul Connect configuration failed: 'proxy' label found, but proxy command is not set in executor configuration")
 }
 
 func stopConsul(server *testutil.TestServer) {
