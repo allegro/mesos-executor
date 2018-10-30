@@ -2,7 +2,6 @@ package scraper
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"os"
 	"time"
@@ -10,6 +9,8 @@ import (
 	"github.com/json-iterator/go"
 	"github.com/rcrowley/go-metrics"
 	log "github.com/sirupsen/logrus"
+
+	"fmt"
 
 	"github.com/allegro/mesos-executor/servicelog"
 )
@@ -69,7 +70,10 @@ func (j *JSON) scanLoop(reader io.Reader, logEntries chan<- servicelog.Entry) er
 				log.WithError(err).Debug("Unable to unmarshal log entry - wrapping in default entry")
 				logEntry = j.wrapInDefault(scanner.Bytes())
 			} else {
-				fmt.Fprintf(invalidLogsWriter, "%s\n", scanner.Bytes())
+				if _, err = fmt.Fprintf(invalidLogsWriter, "%s\n", scanner.Bytes()); err != nil {
+					log.WithError(err).Error("unable to print out unmarshallable log")
+				}
+
 				continue
 			}
 		} else if j.KeyFilter != nil {

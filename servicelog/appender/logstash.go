@@ -45,6 +45,7 @@ type logstash struct {
 	droppedBecauseOfRate    metrics.Counter
 	droppedBecauseOfSize    metrics.Counter
 	droppedBecauseOfTimeout metrics.Counter
+	writeTimer              metrics.Timer
 }
 
 func (l *logstash) Append(entries <-chan servicelog.Entry) {
@@ -78,7 +79,8 @@ func (l *logstash) sendEntry(entry servicelog.Entry) error {
 		return fmt.Errorf("unable to marshal log entry: %s", err)
 	}
 	log.WithField("entry", string(bytes)).Debug("Sending log entry to Logstash")
-	if _, err = l.writer.Write(bytes); err != nil {
+	l.writeTimer.Time(func() { _, err = l.writer.Write(bytes) })
+	if err != nil {
 		if err == xio.ErrSizeLimitExceeded {
 			l.droppedBecauseOfSize.Inc(1)
 			return nil // returning this error will spam stdout with errors
@@ -115,6 +117,7 @@ func NewLogstash(writer io.Writer, options ...func(*logstash) error) (Appender, 
 		droppedBecauseOfRate:    metrics.GetOrRegisterCounter("servicelog.logstash.dropped.RateExceeded", metrics.DefaultRegistry),
 		droppedBecauseOfSize:    metrics.GetOrRegisterCounter("servicelog.logstash.dropped.SizeExceeded", metrics.DefaultRegistry),
 		droppedBecauseOfTimeout: metrics.GetOrRegisterCounter("servicelog.logstash.dropped.Timeout", metrics.DefaultRegistry),
+		writeTimer:              metrics.GetOrRegisterTimer("servicelog.logstash.WriteTimer", metrics.DefaultRegistry),
 	}
 	for _, option := range options {
 		if err := option(l); err != nil {
