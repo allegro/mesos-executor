@@ -83,6 +83,7 @@ func (l *logstash) sendEntry(entry servicelog.Entry) error {
 	if err != nil {
 		if err == xio.ErrSizeLimitExceeded {
 			l.droppedBecauseOfSize.Inc(1)
+			log.Infof("message dropped because of size: %s", string(bytes))
 			return nil // returning this error will spam stdout with errors
 		}
 		if err == xio.ErrRateLimitExceeded {
