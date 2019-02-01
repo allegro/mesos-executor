@@ -57,6 +57,35 @@ func prepareTaskInfo() mesosutils.TaskInfo {
 	return mesosutils.TaskInfo{mesos.TaskInfo{Discovery: &discovery}}
 }
 
+func prepareTaskInfoWithMultiplePortsAndFrontendPortLabel(directorName string) mesosutils.TaskInfo {
+	tag := "tag"
+	frontLabel := mesos.Label{Key: fmt.Sprintf("%s:%s", "frontend-sync", directorName), Value: &tag}
+	labelList := []mesos.Label{frontLabel}
+	labels := mesos.Labels{Labels: labelList}
+
+	ports := mesos.Ports{
+		Ports: []mesos.Port{{Number: uint32(8080)}, {Number: uint32(8081), Labels: &labels}},
+	}
+	discovery := mesos.DiscoveryInfo{Ports: &ports}
+
+	return mesosutils.TaskInfo{mesos.TaskInfo{Discovery: &discovery}}
+}
+
+func prepareTaskInfoWithDirectorWithLabeledPort(directorName string, extraLabels ...mesos.Label) (taskInfo mesosutils.TaskInfo) {
+	taskInfo = prepareTaskInfoWithMultiplePortsAndFrontendPortLabel(directorName)
+	tag := "tag"
+	directorLabel := mesos.Label{Key: "director", Value: &directorName}
+	weightLabel := mesos.Label{Key: "weight:50", Value: &tag}
+	labelList := []mesos.Label{directorLabel, weightLabel}
+	labelList = append(labelList, extraLabels...)
+	labels := mesos.Labels{Labels: labelList}
+	taskInfo.TaskInfo.Labels = &labels
+
+	taskInfo.TaskInfo.Command = &mesos.CommandInfo{}
+
+	return taskInfo
+}
+
 func prepareTaskInfoWithDirector(directorName string, extraLabels ...mesos.Label) (taskInfo mesosutils.TaskInfo) {
 	taskInfo = prepareTaskInfo()
 	tag := "tag"
@@ -85,17 +114,19 @@ func TestIfBackendIDSetWhenBackendRegistrationSucceeds(t *testing.T) {
 	mockClient.On("GetDC", "dc6").Return(&mockDC, nil)
 	mockClient.On("FindDirectorID", "abc456").Return(456, nil)
 	weight := 50
+
 	mockClient.On("AddBackend", &Backend{
 		Address:            runenv.IP().String(),
 		DC:                 mockDC,
 		Director:           "/api/v0.1/director/456/",
 		InheritTimeProfile: true,
-		Port:               8080,
+		Port:               8081,
 		Weight:             &weight,
+		Tags:               []string(nil),
 	}).Return("/api/v0.1/backend/123/", nil)
 
 	serviceHook := Hook{client: mockClient}
-	err := serviceHook.RegisterBackend(prepareTaskInfoWithDirector("abc456"))
+	err := serviceHook.RegisterBackend(prepareTaskInfoWithDirectorWithLabeledPort("abc456"))
 
 	require.NoError(t, err)
 	expectedId := 123

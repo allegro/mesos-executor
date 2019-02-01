@@ -119,6 +119,24 @@ func (h TaskInfo) GetPorts() []mesos.Port {
 	return h.TaskInfo.GetDiscovery().GetPorts().GetPorts()
 }
 
+// GetFirstPortWithLabel returns port with specified label
+func (h TaskInfo) GetFirstPortWithLabel(portLabel string) (*mesos.Port, error) {
+	ports := h.GetPorts()
+	if len(ports) < 1 {
+		return nil, fmt.Errorf("service has no ports available")
+	}
+	for i := range ports {
+		if ports[i].Labels != nil && ports[i].Labels.Labels != nil {
+			for _, label := range ports[i].Labels.Labels {
+				if portLabel == label.Key {
+					return &ports[i], nil
+				}
+			}
+		}
+	}
+	return nil, fmt.Errorf("No port with label %s", portLabel)
+}
+
 // FindEnvValue returns the value of an environment variable
 func (h TaskInfo) FindEnvValue(key string) string {
 	for _, envVar := range h.TaskInfo.GetCommand().GetEnvironment().GetVariables() {
