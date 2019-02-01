@@ -16,6 +16,7 @@ import (
 const vaasBackendIDKey = "vaas-backend-id"
 const vaasDirectorLabelKey = "director"
 const vaasAsyncLabelKey = "vaas-queue"
+const vaasFrontendSyncPortLabelKey = "frontend-sync"
 
 // vaasInitialWeight is an environment variable used to override initial weight.
 const vaasInitialWeight = "VAAS_INITIAL_WEIGHT"
@@ -72,10 +73,18 @@ func (sh *Hook) RegisterBackend(taskInfo mesosutils.TaskInfo) error {
 		return err
 	}
 
-	ports := taskInfo.GetPorts()
+	portLabelKey := fmt.Sprintf("%s:%s", vaasFrontendSyncPortLabelKey, director)
+	port, err := taskInfo.GetFirstPortWithLabel(portLabelKey)
 
-	if len(ports) < 1 {
-		return errors.New("service has no ports available")
+	if port == nil {
+		ports := taskInfo.GetPorts()
+		if len(ports) < 1 {
+			return errors.New("service has no ports available")
+		}
+		port = &ports[0]
+		log.Warnf("Port with label %s not found, using first port %v", portLabelKey, port.GetNumber())
+	} else {
+		log.Infof("Port with label %s found, using port %v", portLabelKey, port.GetNumber())
 	}
 
 	var initialWeight *int
@@ -106,7 +115,7 @@ func (sh *Hook) RegisterBackend(taskInfo mesosutils.TaskInfo) error {
 		Director:           fmt.Sprintf("%s%d/", apiDirectorPath, directorID),
 		Weight:             initialWeight,
 		DC:                 *dc,
-		Port:               int(ports[0].GetNumber()),
+		Port:               int(port.GetNumber()),
 		InheritTimeProfile: true,
 		Tags:               tags,
 	}
@@ -128,14 +137,14 @@ func (sh *Hook) RegisterBackend(taskInfo mesosutils.TaskInfo) error {
 // DeregisterBackend deletes backend from VaaS.
 func (sh *Hook) DeregisterBackend(_ mesosutils.TaskInfo) error {
 	if sh.backendID != nil {
-		log.WithField(vaasBackendIDKey, sh.backendID).
+		log.WithField(vaasBackendIDKey, *sh.backendID).
 			Info("backendID is set - scheduling backend for deletion via VaaS")
 
 		if err := sh.client.DeleteBackend(*sh.backendID); err != nil {
 			return err
 		}
 
-		log.WithField(vaasBackendIDKey, sh.backendID).
+		log.WithField(vaasBackendIDKey, *sh.backendID).
 			Info("Successfully scheduled backend for deletion via VaaS")
 		// we will not try to remove the same backend (and get an error) if this hook gets called again
 		sh.backendID = nil
