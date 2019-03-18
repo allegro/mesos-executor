@@ -32,7 +32,7 @@ func TestIfUsesLabelledPortsForServiceIDGen(t *testing.T) {
 		},
 	})
 
-	expectedServiceID := createServiceId(taskID, consulName, 997)
+	expectedServiceID := createServiceID(taskID, consulName, 997)
 
 	// Create a test Consul server
 	config, server := createTestConsulServer(t)
@@ -54,6 +54,27 @@ func TestIfUsesLabelledPortsForServiceIDGen(t *testing.T) {
 	require.Contains(t, services[consulName], "otherTag")
 }
 
+func TestIfUsesMesosHCForConsulCheck(t *testing.T) {
+	consulName := "consulName"
+	serviceName := "service:taskID_consulName_666"
+	taskID := "taskID"
+	taskInfo := prepareTaskInfo(taskID, consulName, consulName, []string{"metrics", "otherTag"}, []mesos.Port{
+		{Number: 666},
+	})
+
+	// Create a test Consul server
+	config, server := createTestConsulServer(t)
+	client, _ := api.NewClient(config) // #nosec
+	defer stopConsul(server)
+
+	h := &Hook{config: Config{ConsulGlobalTag: "marathon"}, client: client}
+	err := h.RegisterIntoConsul(taskInfo)
+
+	checks, err := client.Agent().Checks()
+	require.NoError(t, err)
+	require.Contains(t, checks, serviceName)
+}
+
 func TestIfUsesFirstPortIfNoneIsLabelledForServiceIDGen(t *testing.T) {
 	consulName := "consulName"
 	taskID := "taskID"
@@ -62,7 +83,7 @@ func TestIfUsesFirstPortIfNoneIsLabelledForServiceIDGen(t *testing.T) {
 		{Number: 997},
 	})
 
-	expectedServiceID := createServiceId(taskID, consulName, 666)
+	expectedServiceID := createServiceID(taskID, consulName, 666)
 
 	// Create a test Consul server
 	config, server := createTestConsulServer(t)
@@ -111,8 +132,8 @@ func TestIfUsesLabelledPortsForServiceIDGenAndRegisterMultiplePorts(t *testing.T
 			},
 		},
 	})
-	expectedServiceID := createServiceId(taskID, consulNameFirst, 997)
-	expectedServiceID2 := createServiceId(taskID, consulNameSecond, 998)
+	expectedServiceID := createServiceID(taskID, consulNameFirst, 997)
+	expectedServiceID2 := createServiceID(taskID, consulNameSecond, 998)
 
 	// Create a test Consul server
 	config, server := createTestConsulServer(t)
@@ -170,13 +191,13 @@ func TestIfUsesPortLabelsForRegistration(t *testing.T) {
 
 	expectedService := instance{
 		consulServiceName: "consulName",
-		consulServiceID:   createServiceId(taskID, consulName, 666),
+		consulServiceID:   createServiceID(taskID, consulName, 666),
 		port:              666,
 		tags:              []string{"hystrix", "metrics", "extras", "marathon"},
 	}
 	expectedService2 := instance{
 		consulServiceName: "consulName-secured",
-		consulServiceID:   createServiceId(taskID, consulNameSecond, 997),
+		consulServiceID:   createServiceID(taskID, consulNameSecond, 997),
 		port:              997,
 		tags:              []string{"metrics", "extras", "marathon"},
 	}
@@ -221,7 +242,7 @@ func TestIfGeneratesNameIfConsulLabelTrueOrEmpty(t *testing.T) {
 			{Number: 666},
 		})
 
-		expectedServiceID := createServiceId(taskID, taskID, 666)
+		expectedServiceID := createServiceID(taskID, taskID, 666)
 
 		// Create a test Consul server
 		config, server := createTestConsulServer(t)
@@ -263,7 +284,7 @@ func TestIfGeneratesCorrectNameIfConsulLabelEmpty(t *testing.T) {
 					{Number: 666},
 				})
 
-			expectedServiceID := createServiceId(testData.taskID, testData.expectedName, 666)
+			expectedServiceID := createServiceID(testData.taskID, testData.expectedName, 666)
 
 			// Create a test Consul server
 			config, server := createTestConsulServer(t)
@@ -357,8 +378,8 @@ func stopConsul(server *testutil.TestServer) {
 	_ = server.Stop()
 }
 
-func createServiceId(taskId string, taskName string, port int) string {
-	return taskId + "_" + taskName + "_" + strconv.Itoa(port)
+func createServiceID(taskID string, taskName string, port int) string {
+	return taskID + "_" + taskName + "_" + strconv.Itoa(port)
 }
 
 func prepareTaskInfo(taskID string, taskName string, consulName string, tags []string, ports []mesos.Port) mesosutils.TaskInfo {

@@ -8,11 +8,11 @@ import (
 	"github.com/hashicorp/consul/api"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/allegro/mesos-executor"
+	executor "github.com/allegro/mesos-executor"
 	"github.com/allegro/mesos-executor/hook"
 	"github.com/allegro/mesos-executor/mesosutils"
 	"github.com/allegro/mesos-executor/runenv"
-	"github.com/mesos/mesos-go/api/v1/lib"
+	mesos "github.com/mesos/mesos-go/api/v1/lib"
 )
 
 const (
@@ -199,14 +199,17 @@ func generateHealthCheck(mesosCheck mesosutils.HealthCheck, port int) *api.Agent
 	switch mesosCheck.Type {
 	case mesosutils.HTTP:
 		check.HTTP = generateURL(mesosCheck.HTTP.Path, port)
+		return &check
 	case mesosutils.TCP:
 		check.TCP = fmt.Sprintf("%s:%d", serviceHost, port)
+		return &check
 	}
 	return nil
 }
 
 func generateURL(path string, port int) string {
 	var checkURL url.URL
+	checkURL.Scheme = "http"
 	checkURL.Host = executor.HealthCheckAddress(uint32(port))
 	checkURL.Path = path
 
