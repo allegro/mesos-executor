@@ -21,6 +21,9 @@ const (
 	consulNameLabelKey = "consul"
 	consulTagValue     = "tag"
 	serviceHost        = "127.0.0.1"
+	servicePortName    = "service"
+	proxyPortName      = "proxyingress"
+	servicePortTag     = "service-port:%d"
 )
 
 // instance represents a service in consul
@@ -92,6 +95,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 	}
 
 	ports := taskInfo.GetPorts()
+	servicePort := getServicePort(ports)
 	globalTags := append(taskInfo.GetLabelKeysByValue(consulTagValue), h.config.ConsulGlobalTag)
 
 	var instancesToRegister []instance
@@ -107,6 +111,10 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 		consulServiceID := fmt.Sprintf("%s_%s_%d", taskID, portServiceName, port.GetNumber())
 		portTags := mesosutils.GetLabelKeysByValue(port.GetLabels().GetLabels(), consulTagValue)
 		portTags = append(portTags, globalTags...)
+		if port.Name != nil && *port.Name == proxyPortName && servicePort != nil {
+			portTags = append(portTags, fmt.Sprintf(servicePortTag, servicePort.Number))
+		}
+
 		log.Infof("Adding service ID %q to deregister before termination", consulServiceID)
 		instancesToRegister = append(instancesToRegister, instance{
 			consulServiceName: portServiceName,
@@ -178,6 +186,15 @@ func getServiceLabel(port mesos.Port) (string, error) {
 		return "", fmt.Errorf("port %d has no label %q", port.GetNumber(), consulNameLabelKey)
 	}
 	return label.GetValue(), nil
+}
+
+func getServicePort(ports []mesos.Port) *mesos.Port {
+	for _, port := range ports {
+		if port.Name != nil && *port.Name == servicePortName {
+			return &port
+		}
+	}
+	return nil
 }
 
 func marathonAppNameToServiceName(name mesosutils.TaskID) string {
