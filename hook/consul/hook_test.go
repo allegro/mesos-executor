@@ -374,6 +374,61 @@ func TestIfNewHookCreatesNoopHookWhenHookDisabled(t *testing.T) {
 	require.IsType(t, hook.NoopHook{}, h)
 }
 
+func TestIfServicePortTagAdded(t *testing.T) {
+	servicePortName := "service"
+	proxyPortName := "proxyingress"
+	otherPortName := "otherport"
+	tagName := "tag"
+
+	consulMainName := "serviceName"
+	consulAdditionalName := "additionalServiceName"
+
+	taskInfo := prepareTaskInfo("taskId", "taskName", "taskName", []string{"global-tag"}, []mesos.Port{
+		{Number: 667},
+		{Number: 668, Name: &servicePortName},
+		{Number: 669, Name: &otherPortName, Labels: &mesos.Labels{Labels: []mesos.Label{
+			{Key: "consul", Value: &consulAdditionalName},
+			{Key: "other-port-tag", Value: &tagName},
+		}}},
+		{Number: 670, Name: &proxyPortName, Labels: &mesos.Labels{Labels: []mesos.Label{
+			{Key: "consul", Value: &consulMainName},
+			{Key: "main-port-tag", Value: &tagName},
+		}}},
+	})
+
+	expectedMainInstance := instance{
+		consulServiceName: "serviceName",
+		port:              670,
+		tags:              []string{"marathon", "main-port-tag", "global-tag", "service-port:668"},
+	}
+
+	expectedAdditionalInstance := instance{
+		consulServiceName: "additionalServiceName",
+		port:              669,
+		tags:              []string{"marathon", "other-port-tag", "global-tag"},
+	}
+
+	// Create a test Consul server
+	config, server := createTestConsulServer(t)
+	client, _ := api.NewClient(config) // #nosec
+	defer stopConsul(server)
+
+	h := &Hook{config: Config{ConsulGlobalTag: "marathon"}, client: client}
+
+	err := h.RegisterIntoConsul(taskInfo)
+
+	require.NoError(t, err)
+	require.Len(t, h.serviceInstances, 2)
+
+	opts := api.QueryOptions{}
+	services, _, err := client.Catalog().Services(&opts)
+
+	require.Contains(t, services, consulMainName)
+	requireEqualElements(t, expectedMainInstance.tags, services[consulMainName])
+	require.Contains(t, services, consulAdditionalName)
+	requireEqualElements(t, expectedAdditionalInstance.tags, services[consulAdditionalName])
+}
+
 func stopConsul(server *testutil.TestServer) {
 	_ = server.Stop()
 }
