@@ -349,6 +349,51 @@ func TestIfServiceDeregisteredCorrectly(t *testing.T) {
 	require.NotContains(t, services, consulName)
 }
 
+func TestIfPlaceholdersAreResolved(t *testing.T) {
+
+	adminPortName := "admin"
+	servicePortName := "service"
+	consulName := "serviceName"
+	consulNameAdmin := "serviceName-admin"
+	tagValue := "tag"
+
+	// Create a test Consul server
+	config, server := createTestConsulServer(t)
+	client, _ := api.NewClient(config) // #nosec
+	defer stopConsul(server)
+
+	taskInfo := prepareTaskInfo("taskId", "taskName", "taskName", []string{"service-port:{port:service}"}, []mesos.Port{
+		{Number: 655, Name: &adminPortName, Labels: &mesos.Labels{Labels: []mesos.Label{
+			{Key: "consul", Value: &consulNameAdmin},
+			{Key: "admin", Value: &tagValue},
+		}}},
+		{Number: 766, Labels: &mesos.Labels{Labels: []mesos.Label{
+			{Key: "consul", Value: &consulName},
+			{Key: "admin-port:{port:admin}", Value: &tagValue},
+			{Key: "{port:unknown} is not replaced", Value: &tagValue},
+		}}},
+		{Number: 877, Name: &servicePortName},
+	})
+
+	expectedServiceTags := []string{"marathon", "service-port:877", "admin-port:655", "{port:unknown} is not replaced"}
+	expectedAdminTags := []string{"marathon", "admin", "service-port:877"}
+
+	h := &Hook{config: Config{ConsulGlobalTag: "marathon"}, client: client}
+
+	err := h.RegisterIntoConsul(taskInfo)
+
+	require.NoError(t, err)
+	require.Len(t, h.serviceInstances, 2)
+
+	opts := api.QueryOptions{}
+	services, _, err := client.Catalog().Services(&opts)
+
+	require.Contains(t, services, consulName)
+	requireEqualElements(t, expectedServiceTags, services[consulName])
+	require.Contains(t, services, consulNameAdmin)
+	requireEqualElements(t, expectedAdminTags, services[consulNameAdmin])
+}
+
 func TestIfErrorHandledOnNoConsul(t *testing.T) {
 	consulName := "consulName"
 	taskID := "taskID"
