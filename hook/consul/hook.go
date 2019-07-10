@@ -21,6 +21,7 @@ const (
 	consulNameLabelKey = "consul"
 	consulTagValue     = "tag"
 	serviceHost        = "127.0.0.1"
+	portPlaceholder    = "{port:%s}"
 )
 
 // instance represents a service in consul
@@ -92,6 +93,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 	}
 
 	ports := taskInfo.GetPorts()
+	tagPlaceholders := getPlaceholders(ports)
 	globalTags := append(taskInfo.GetLabelKeysByValue(consulTagValue), h.config.ConsulGlobalTag)
 
 	var instancesToRegister []instance
@@ -133,7 +135,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 		serviceRegistration := api.AgentServiceRegistration{
 			ID:                serviceData.consulServiceID,
 			Name:              serviceData.consulServiceName,
-			Tags:              serviceData.tags,
+			Tags:              resolvePlaceholders(serviceData.tags, tagPlaceholders),
 			Port:              int(serviceData.port),
 			Address:           runenv.IP().String(),
 			EnableTagOverride: false,
@@ -170,6 +172,29 @@ func (h *Hook) DeregisterFromConsul(taskInfo mesosutils.TaskInfo) error {
 	h.serviceInstances = ghostInstances
 
 	return nil
+}
+
+func getPlaceholders(ports []mesos.Port) map[string]string {
+	placeholders := map[string]string{}
+	for _, port := range ports {
+		name := port.GetName()
+		if name != "" {
+			placeholder := fmt.Sprintf(portPlaceholder, name)
+			placeholders[placeholder] = fmt.Sprint(port.GetNumber())
+		}
+	}
+	return placeholders
+}
+
+func resolvePlaceholders(values []string, placeholders map[string]string) []string {
+	resolved := make([]string, 0, len(values))
+	for _, value := range values {
+		for placeholder, replacement := range placeholders {
+			value = strings.Replace(value, placeholder, replacement, -1)
+		}
+		resolved = append(resolved, value)
+	}
+	return resolved
 }
 
 func getServiceLabel(port mesos.Port) (string, error) {
