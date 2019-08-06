@@ -193,13 +193,13 @@ func TestIfUsesPortLabelsForRegistration(t *testing.T) {
 		consulServiceName: "consulName",
 		consulServiceID:   createServiceID(taskID, consulName, 666),
 		port:              666,
-		tags:              []string{"hystrix", "metrics", "extras", "marathon"},
+		tags:              []string{"hystrix", "metrics", "extras", "marathon", "marathon-task:taskID"},
 	}
 	expectedService2 := instance{
 		consulServiceName: "consulName-secured",
 		consulServiceID:   createServiceID(taskID, consulNameSecond, 997),
 		port:              997,
-		tags:              []string{"metrics", "extras", "marathon"},
+		tags:              []string{"metrics", "extras", "marathon", "marathon-task:taskID"},
 	}
 
 	// Create a test Consul server
@@ -375,8 +375,8 @@ func TestIfPlaceholdersAreResolved(t *testing.T) {
 		{Number: 877, Name: &servicePortName},
 	})
 
-	expectedServiceTags := []string{"marathon", "service-port:877", "admin-port:655", "{port:unknown} is not replaced"}
-	expectedAdminTags := []string{"marathon", "admin", "service-port:877"}
+	expectedServiceTags := []string{"marathon", "service-port:877", "admin-port:655", "{port:unknown} is not replaced", "marathon-task:taskId"}
+	expectedAdminTags := []string{"marathon", "admin", "service-port:877", "marathon-task:taskId"}
 
 	h := &Hook{config: Config{ConsulGlobalTag: "marathon"}, client: client}
 
