@@ -107,8 +107,10 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 		// it registers the service
 		// See: https://github.com/allegro/marathon-consul/blob/v1.1.0/consul/consul.go#L299-L301
 		consulServiceID := fmt.Sprintf("%s_%s_%d", taskID, portServiceName, port.GetNumber())
+		marathonTaskTag := fmt.Sprintf("marathon-task:%s", taskID)
 		portTags := mesosutils.GetLabelKeysByValue(port.GetLabels().GetLabels(), consulTagValue)
 		portTags = append(portTags, globalTags...)
+		portTags = append(portTags, marathonTaskTag)
 		log.Infof("Adding service ID %q to deregister before termination", consulServiceID)
 		instancesToRegister = append(instancesToRegister, instance{
 			consulServiceName: portServiceName,
