@@ -108,7 +108,7 @@ func (c *cancellableCommand) Stop(gracePeriod time.Duration) {
 		return
 	}
 	c.killing = true
-	err := osutil.KillTree(syscall.SIGTERM, int32(c.cmd.Process.Pid))
+	err := osutil.KillTreeOmittingEnvoy(syscall.SIGTERM, int32(c.cmd.Process.Pid))
 	if err != nil {
 		log.WithError(err).Errorf("There was a problem with sending %s to %d children", syscall.SIGTERM, c.cmd.Process.Pid)
 		return
