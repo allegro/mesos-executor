@@ -46,7 +46,7 @@ func KillTree(signal syscall.Signal, pid int32) error {
 	return wrapWithStopAndCont(signal, pgids)
 }
 
-// Sends signal to whole process tree, killing by pids instead of pgids.
+// KillTreeOmittingEnvoy sends signal to whole process tree, killing by pids instead of pgids.
 // Omits Envoy processes.
 func KillTreeOmittingEnvoy(signal syscall.Signal, pid int32) error {
 	proc, err := process.NewProcess(pid)
