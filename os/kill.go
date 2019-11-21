@@ -13,9 +13,19 @@ import (
 // KillTree sends signal to whole process tree, starting from given pid as root.
 // Order of signalling in process tree is undefined.
 func KillTree(signal syscall.Signal, pid int32) error {
-	proc, err := process.NewProcess(pid)
+	pgids, err := getProcessGroupsInTree(pid)
 	if err != nil {
 		return err
+	}
+
+	signals := wrapWithStopAndCont(signal, pgids)
+	return sendSignalsToProcessGroups(signals, pgids)
+}
+
+func getProcessGroupsInTree(pid int32) ([]int, error) {
+	proc, err := process.NewProcess(pid)
+	if err != nil {
+		return nil, err
 	}
 
 	processes := getAllChildren(proc)
@@ -24,7 +34,7 @@ func KillTree(signal syscall.Signal, pid int32) error {
 	curPid := syscall.Getpid()
 	curPgid, err := syscall.Getpgid(curPid)
 	if err != nil {
-		return fmt.Errorf("error getting current process pgid: %s", err)
+		return nil, fmt.Errorf("error getting current process pgid: %s", err)
 	}
 
 	var pgids []int
@@ -32,7 +42,7 @@ func KillTree(signal syscall.Signal, pid int32) error {
 	for _, proc := range processes {
 		pgid, err := syscall.Getpgid(int(proc.Pid))
 		if err != nil {
-			return fmt.Errorf("error getting child process pgid: %s", err)
+			return nil, fmt.Errorf("error getting child process pgid: %s", err)
 		}
 		if pgid == curPgid {
 			continue
@@ -42,8 +52,7 @@ func KillTree(signal syscall.Signal, pid int32) error {
 			pgidsSeen[pgid] = true
 		}
 	}
-
-	return wrapWithStopAndCont(signal, pgids)
+	return pgids, nil
 }
 
 // getAllChildren gets whole descendants tree of given process. Order of returned
@@ -61,27 +70,23 @@ func getAllChildren(proc *process.Process) []*process.Process {
 // wrapWithStopAndCont wraps original process tree signal sending with SIGSTOP and
 // SIGCONT to prevent processes from forking during termination, so we will not
 // have orphaned processes after.
-func wrapWithStopAndCont(signal syscall.Signal, pgids []int) error {
+func wrapWithStopAndCont(signal syscall.Signal, pgids []int) []syscall.Signal {
 	signals := []syscall.Signal{syscall.SIGSTOP, signal}
 	if signal != syscall.SIGKILL { // no point in sending any signal after SIGKILL
 		signals = append(signals, syscall.SIGCONT)
 	}
-
-	for _, currentSignal := range signals {
-		if err := sendSignalToProcessGroups(currentSignal, pgids); err != nil {
-			return err
-		}
-	}
-	return nil
+	return signals
 }
 
-func sendSignalToProcessGroups(signal syscall.Signal, pgids []int) error {
-	for _, pgid := range pgids {
-		log.Infof("Sending signal %s to pgid %d", signal, pgid)
-		err := syscall.Kill(-pgid, signal)
-		if err != nil {
-			log.Infof("Error sending signal to pgid %d: %s", pgid, err)
-			return err
+func sendSignalsToProcessGroups(signals []syscall.Signal, pgids []int) error {
+	for _, signal := range signals {
+		for _, pgid := range pgids {
+			log.Infof("Sending signal %s to pgid %d", signal, pgid)
+			err := syscall.Kill(-pgid, signal)
+			if err != nil {
+				log.Infof("Error sending signal to pgid %d: %s", pgid, err)
+				return err
+			}
 		}
 	}
 	return nil
