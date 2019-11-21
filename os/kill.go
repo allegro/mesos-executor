@@ -3,7 +3,11 @@
 package os
 
 import (
+	"bufio"
 	"fmt"
+	"os/exec"
+	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/shirou/gopsutil/process"
@@ -85,6 +89,99 @@ func sendSignalsToProcessGroups(signals []syscall.Signal, pgids []int) error {
 			err := syscall.Kill(-pgid, signal)
 			if err != nil {
 				log.Infof("Error sending signal to pgid %d: %s", pgid, err)
+			}
+		}
+	}
+	return nil
+}
+
+// KillTreeWithExcludes sends signal to whole process tree, starting from given pid as root.
+// Omits processes matching name "envoy". Kills using pids instead of pgids.
+func KillTreeWithExcludes(signal syscall.Signal, pid int32) error {
+	log.Infof("Will send signal %s to tree starting from %d", signal.String(), pid)
+
+	pgids, err := getProcessGroupsInTree(pid)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Found process groups: %v", pgids)
+
+	pids, err := findProcessesInGroups(pgids)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Found processes in groups: %v", pids)
+
+	pids, err = removeProcessesMatching(pids, func(proc *process.Process) bool {
+		name, err := proc.Name()
+		if err != nil {
+			return false
+		}
+
+		return name == "envoy"
+	})
+	if err != nil {
+		return err
+	}
+
+	signals := wrapWithStopAndCont(signal, pgids)
+	return sendSignalsToProcesses(signals, pids)
+}
+
+func findProcessesInGroups(pgids []int) ([]int, error) {
+	var pids []int
+	for _, pgid := range pgids {
+		cmd := exec.Command("pgrep", "-g", strconv.Itoa(pgid))
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return nil, fmt.Errorf("'pgrep -g %d' failed: %s", pgid, err)
+		}
+		if !cmd.ProcessState.Success() {
+			return nil, fmt.Errorf("'pgrep -g %d' failed, output was: '%s'", pgid, output)
+		}
+
+		scanner := bufio.NewScanner(strings.NewReader(string(output)))
+		for scanner.Scan() {
+			pid, err := strconv.Atoi(scanner.Text())
+			if err != nil {
+				return nil, fmt.Errorf("cannot convert pgrep output: %s. Output was '%s'", err, output)
+			}
+			pids = append(pids, pid)
+		}
+	}
+
+	return pids, nil
+}
+
+func removeProcessesMatching(pids []int, shouldExclude func(proc *process.Process) bool) ([]int, error) {
+	var retainedPids []int
+	for _, pid := range pids {
+		proc, err := process.NewProcess(int32(pid))
+		if err != nil {
+			return nil, err
+		}
+
+		if shouldExclude(proc) {
+			log.Infof("Excluding pid %d from kill", pid)
+			continue
+		}
+
+		retainedPids = append(retainedPids, pid)
+	}
+
+	return retainedPids, nil
+}
+
+func sendSignalsToProcesses(signals []syscall.Signal, pids []int) error {
+	for _, signal := range signals {
+		for _, pid := range pids {
+			log.Infof("Sending signal %s to pid %d", signal, pid)
+			err := syscall.Kill(pid, signal)
+			if err != nil {
+				log.Infof("Error sending signal to pid %d: %s", pid, err)
+				return err
 			}
 		}
 	}
