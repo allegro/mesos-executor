@@ -62,7 +62,11 @@ func getAllChildren(proc *process.Process) []*process.Process {
 // SIGCONT to prevent processes from forking during termination, so we will not
 // have orphaned processes after.
 func wrapWithStopAndCont(signal syscall.Signal, pgids []int) error {
-	signals := []syscall.Signal{syscall.SIGSTOP, signal, syscall.SIGCONT}
+	signals := []syscall.Signal{syscall.SIGSTOP, signal}
+	if signal != syscall.SIGKILL { // no point in sending any signal after SIGKILL
+		signals = append(signals, syscall.SIGCONT)
+	}
+
 	for _, currentSignal := range signals {
 		if err := sendSignalToProcessGroups(currentSignal, pgids); err != nil {
 			return err
