@@ -42,7 +42,7 @@ const (
 type Command interface {
 	Start() error
 	Wait() <-chan TaskExitState
-	Stop(gracePeriod time.Duration)
+	Stop(gracePeriod time.Duration, sigtermExcludeProcesses []string)
 }
 
 type cancellableCommand struct {
@@ -102,13 +102,13 @@ func (c *cancellableCommand) waitForCommand() {
 	close(c.doneChan)
 }
 
-func (c *cancellableCommand) Stop(gracePeriod time.Duration) {
+func (c *cancellableCommand) Stop(gracePeriod time.Duration, sigtermExcludeProcesses []string) {
 	// Return if Stop was already called.
 	if c.killing {
 		return
 	}
 	c.killing = true
-	err := osutil.KillTreeWithExcludes(syscall.SIGTERM, int32(c.cmd.Process.Pid))
+	err := osutil.KillTreeWithExcludes(syscall.SIGTERM, int32(c.cmd.Process.Pid), sigtermExcludeProcesses)
 	if err != nil {
 		log.WithError(err).Errorf("There was a problem with sending %s to %d children", syscall.SIGTERM, c.cmd.Process.Pid)
 		return

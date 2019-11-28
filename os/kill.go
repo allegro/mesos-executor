@@ -96,8 +96,8 @@ func sendSignalsToProcessGroups(signals []syscall.Signal, pgids []int) error {
 }
 
 // KillTreeWithExcludes sends signal to whole process tree, starting from given pid as root.
-// Omits processes matching name "envoy". Kills using pids instead of pgids.
-func KillTreeWithExcludes(signal syscall.Signal, pid int32) error {
+// Omits processes matching names specified in processesToExclude. Kills using pids instead of pgids.
+func KillTreeWithExcludes(signal syscall.Signal, pid int32, processesToExclude []string) error {
 	log.Infof("Will send signal %s to tree starting from %d", signal.String(), pid)
 
 	pgids, err := getProcessGroupsInTree(pid)
@@ -114,14 +114,7 @@ func KillTreeWithExcludes(signal syscall.Signal, pid int32) error {
 
 	log.Infof("Found processes in groups: %v", pids)
 
-	pids, err = removeProcessesMatching(pids, func(proc *process.Process) bool {
-		name, err := proc.Name()
-		if err != nil {
-			return false
-		}
-
-		return name == "envoy"
-	})
+	pids, err = excludeProcesses(pids, processesToExclude)
 	if err != nil {
 		return err
 	}
@@ -155,7 +148,7 @@ func findProcessesInGroups(pgids []int) ([]int, error) {
 	return pids, nil
 }
 
-func removeProcessesMatching(pids []int, shouldExclude func(proc *process.Process) bool) ([]int, error) {
+func excludeProcesses(pids []int, processesToExclude []string) ([]int, error) {
 	var retainedPids []int
 	for _, pid := range pids {
 		proc, err := process.NewProcess(int32(pid))
@@ -163,8 +156,14 @@ func removeProcessesMatching(pids []int, shouldExclude func(proc *process.Proces
 			return nil, err
 		}
 
-		if shouldExclude(proc) {
-			log.Infof("Excluding pid %d from kill", pid)
+		name, err := proc.Name()
+		if err != nil {
+			log.Infof("Could not get process name of %d, continuing", pid)
+			continue
+		}
+
+		if isExcluded(name, processesToExclude) {
+			log.Infof("Excluding process %s with pid %d from kill", name, pid)
 			continue
 		}
 
@@ -172,6 +171,16 @@ func removeProcessesMatching(pids []int, shouldExclude func(proc *process.Proces
 	}
 
 	return retainedPids, nil
+}
+
+func isExcluded(name string, namesToExclude []string) bool {
+	for _, exclude := range namesToExclude {
+		if strings.ToLower(name) == strings.ToLower(exclude) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func sendSignalsToProcesses(signals []syscall.Signal, pids []int) error {

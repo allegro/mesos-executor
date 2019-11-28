@@ -1,4 +1,4 @@
 #!/bin/sh
 
 set -m
-(sh -c "(sleep 5)") || true
+(sh -c "(sleep 3)") || true
