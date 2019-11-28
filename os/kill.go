@@ -85,7 +85,6 @@ func sendSignalsToProcessGroups(signals []syscall.Signal, pgids []int) error {
 			err := syscall.Kill(-pgid, signal)
 			if err != nil {
 				log.Infof("Error sending signal to pgid %d: %s", pgid, err)
-				return err
 			}
 		}
 	}
