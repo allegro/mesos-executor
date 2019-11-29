@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const TIME_LIMIT = 5 * time.Second // equal to sleep time in test scripts
+const TIME_LIMIT = 3 * time.Second // equal to sleep time in test scripts
 
 func TestKillTree_SimpleTreeTree(t *testing.T) {
 	startTime := time.Now()

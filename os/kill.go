@@ -190,7 +190,6 @@ func sendSignalsToProcesses(signals []syscall.Signal, pids []int) error {
 			err := syscall.Kill(pid, signal)
 			if err != nil {
 				log.Infof("Error sending signal to pid %d: %s", pid, err)
-				return err
 			}
 		}
 	}
