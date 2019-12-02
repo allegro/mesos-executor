@@ -50,6 +50,10 @@ It is performed in the following steps:
 3. Wait `KillPolicyGracePeriod` (can be overridden with Task Kill Policy Grace Period).
 4. Sent SIGKILL to process tree.
 
+Executor can be configured to exclude certain processes from SIGTERM signal. Provide
+process names to exclude in `ALLEGRO_EXECUTOR_SIGTERM_EXCLUDE_PROCESSES` environment variable
+as a comma-separated string.
+
 ## Log scraping
 
 By default executor forwards service stdout/stderr to its own standard streams.
@@ -166,6 +170,8 @@ vagrant@localhost:~$ sudo supervisorctl tail -f consul
 1. Executor may not send a SIGKILL to process tree after grace period,
 so service process may be still running when executor finishes.
 To clean up executor and launched tasks properly use [pid isolator][10].
+
+Requires `pgrep -g` to be available on the machine.
 
 ## Contributing
 

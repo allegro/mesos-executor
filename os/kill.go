@@ -22,7 +22,7 @@ func KillTree(signal syscall.Signal, pid int32) error {
 		return err
 	}
 
-	signals := wrapWithStopAndCont(signal, pgids)
+	signals := wrapWithStopAndCont(signal)
 	return sendSignalsToProcessGroups(signals, pgids)
 }
 
@@ -74,7 +74,7 @@ func getAllChildren(proc *process.Process) []*process.Process {
 // wrapWithStopAndCont wraps original process tree signal sending with SIGSTOP and
 // SIGCONT to prevent processes from forking during termination, so we will not
 // have orphaned processes after.
-func wrapWithStopAndCont(signal syscall.Signal, pgids []int) []syscall.Signal {
+func wrapWithStopAndCont(signal syscall.Signal) []syscall.Signal {
 	signals := []syscall.Signal{syscall.SIGSTOP, signal}
 	if signal != syscall.SIGKILL { // no point in sending any signal after SIGKILL
 		signals = append(signals, syscall.SIGCONT)
@@ -119,7 +119,7 @@ func KillTreeWithExcludes(signal syscall.Signal, pid int32, processesToExclude [
 		return err
 	}
 
-	signals := wrapWithStopAndCont(signal, pgids)
+	signals := wrapWithStopAndCont(signal)
 	return sendSignalsToProcesses(signals, pids)
 }
 
