@@ -63,6 +63,9 @@ type Config struct {
 	// Range in which certificate will be considered as expired. Used to
 	// prevent shutdown of all tasks at once.
 	RandomExpirationRange time.Duration `default:"3h" split_words:"true"`
+
+	// SigtermExcludeProcesses specifies process names to omit when sending SIGTERM to process tree during shutdown
+	SigtermExcludeProcesses []string `split_words:"true"`
 }
 
 var errMustAbort = errors.New("received abort signal from mesos, will attempt to re-subscribe")
@@ -522,7 +525,7 @@ func (e *Executor) shutDown(taskInfo *mesos.TaskInfo, cmd Command) {
 		TaskInfo: mesosutils.TaskInfo{TaskInfo: *taskInfo},
 	}
 	_, _ = e.hookManager.HandleEvent(beforeTerminateEvent, true) // ignore errors here, so every hook will have a chance to be called
-	cmd.Stop(gracePeriod)                                        // blocking call
+	cmd.Stop(gracePeriod, e.config.SigtermExcludeProcesses)      // blocking call
 }
 
 func taskExitToEvent(exitStateChan <-chan TaskExitState, events chan<- Event) {
