@@ -52,7 +52,7 @@ It is performed in the following steps:
 
 Executor can be configured to exclude certain processes from SIGTERM signal. Provide
 process names to exclude in `ALLEGRO_EXECUTOR_SIGTERM_EXCLUDE_PROCESSES` environment variable
-as a comma-separated string.
+as a comma-separated string. This feature requires `pgrep -g` to be available on the machine.
 
 ## Log scraping
 
