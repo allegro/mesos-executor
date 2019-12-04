@@ -171,8 +171,6 @@ vagrant@localhost:~$ sudo supervisorctl tail -f consul
 so service process may be still running when executor finishes.
 To clean up executor and launched tasks properly use [pid isolator][10].
 
-Requires `pgrep -g` to be available on the machine.
-
 ## Contributing
 
 See [CONTRIBUTING](CONTRIBUTING.md) for more details and code of conduct. 

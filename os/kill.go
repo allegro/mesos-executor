@@ -100,6 +100,10 @@ func sendSignalsToProcessGroups(signals []syscall.Signal, pgids []int) error {
 func KillTreeWithExcludes(signal syscall.Signal, pid int32, processesToExclude []string) error {
 	log.Infof("Will send signal %s to tree starting from %d", signal.String(), pid)
 
+	if len(processesToExclude) == 0 {
+		return KillTree(signal, pid)
+	}
+
 	pgids, err := getProcessGroupsInTree(pid)
 	if err != nil {
 		return err
