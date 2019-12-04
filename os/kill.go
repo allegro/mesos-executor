@@ -162,11 +162,8 @@ func excludeProcesses(pids []int, processesToExclude []string) ([]int, error) {
 
 		name, err := proc.Name()
 		if err != nil {
-			log.Infof("Could not get process name of %d, continuing", pid)
-			continue
-		}
-
-		if isExcluded(name, processesToExclude) {
+			log.Infof("Could not get process name of %d, will not exclude it from kill", pid)
+		} else if isExcluded(name, processesToExclude) {
 			log.Infof("Excluding process %s with pid %d from kill", name, pid)
 			continue
 		}
