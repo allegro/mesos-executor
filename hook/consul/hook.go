@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/consul/api"
 	log "github.com/sirupsen/logrus"
@@ -40,6 +41,12 @@ type Hook struct {
 	serviceInstances []instance
 }
 
+// Check that should be checked in consul before changing service state to healthy on mesos
+type ServiceCheckToVerify struct {
+	consulServiceName string
+	check *api.AgentServiceCheck
+}
+
 // Config is Consul hook configuration settable from environment
 type Config struct {
 	// Enabled is a flag to control whether hook should be used
@@ -55,6 +62,11 @@ type Config struct {
 	// > should be unique for every Marathon-cluster connected to Consul
 	// https://github.com/allegro/marathon-consul/blob/1.4.2/config/config.go#L74
 	ConsulGlobalTag string `default:"marathon" envconfig:"consul_global_tag"`
+	// Timeout used to wait for service health check pass in consul.
+	// If service health checks are not healthy within specified timeout
+	// service status will not be set to healthy.
+	// Setting to zero disables health checks verification
+	TimeoutForConsulHealthChecksInSeconds time.Duration `default:"0" envconfig:"consul_healtcheck_timeout"`
 }
 
 // HandleEvent calls appropriate hook functions that correspond to supported
@@ -131,9 +143,11 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 			},
 		}
 	}
-
+	var checksToVerifyAfterRegistration []ServiceCheckToVerify
 	agent := h.client.Agent()
 	for _, serviceData := range instancesToRegister {
+		serviceHealthCheck := generateHealthCheck(serviceData.consulServiceID, taskInfo.GetHealthCheck(), int(serviceData.port))
+
 		serviceRegistration := api.AgentServiceRegistration{
 			ID:                serviceData.consulServiceID,
 			Name:              serviceData.consulServiceName,
@@ -142,7 +156,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 			Address:           runenv.IP().String(),
 			EnableTagOverride: false,
 			Checks:            api.AgentServiceChecks{},
-			Check:             generateHealthCheck(taskInfo.GetHealthCheck(), int(serviceData.port)),
+			Check:             serviceHealthCheck,
 		}
 
 		if err := agent.ServiceRegister(&serviceRegistration); err != nil {
@@ -152,9 +166,63 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 		log.Debugf("Service %q registered in Consul with port %d and ID %q", serviceData.consulServiceName, serviceData.port, serviceData.consulServiceID)
 		log.Infof("Adding service ID %q to deregister before termination", serviceData.consulServiceID)
 		h.serviceInstances = append(h.serviceInstances, serviceData)
+		checksToVerifyAfterRegistration = append(checksToVerifyAfterRegistration, ServiceCheckToVerify {
+			consulServiceName: serviceData.consulServiceName,
+			check: serviceHealthCheck,
+		})
 	}
+	log.Infof("Checking status of registered consul health checks")
+	return h.VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfterRegistration)
+}
 
-	return nil
+// Waits for change all service health checks status to passing
+// It this state does not change within defined TimeoutForConsulHealthChecksInSeconds timeout
+// service will not be marked as healthy on Mesos
+func (h *Hook) VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfterRegistration []ServiceCheckToVerify) error {
+	if h.config.TimeoutForConsulHealthChecksInSeconds == 0 {
+		return nil
+	}
+	c := make(chan bool, 1)
+	go func() {
+		for len(checksToVerifyAfterRegistration) > 0 {
+			checksToVerifyAfterRegistration = h.VerifyConsulChecks(checksToVerifyAfterRegistration)
+
+		}
+		c <- true
+	} ()
+	select {
+	case <- c:
+		return nil
+	case <-time.After(h.config.TimeoutForConsulHealthChecksInSeconds * time.Second):
+		log.Warnf("After %d seconds %d health checks still fails", h.config.TimeoutForConsulHealthChecksInSeconds, len(checksToVerifyAfterRegistration))
+		return fmt.Errorf("after %d seconds %d health checks still fails", h.config.TimeoutForConsulHealthChecksInSeconds, len(checksToVerifyAfterRegistration))
+	}
+}
+
+func (h *Hook) VerifyConsulChecks(checksToVerifyAfterRegistration []ServiceCheckToVerify) []ServiceCheckToVerify{
+	var checksLeftToVerify []ServiceCheckToVerify
+	health := h.client.Health()
+	OUTER:
+	for _, checkToVerify := range checksToVerifyAfterRegistration {
+		serviceChecksResult,_ , err := health.Checks(checkToVerify.consulServiceName, nil)
+		if  err != nil {
+			log.WithError(err).Warnf("Error during checking health check for service %q", checkToVerify.consulServiceName)
+			continue
+		}
+		for _, currentCheckResult := range serviceChecksResult {
+			if currentCheckResult.CheckID == checkToVerify.check.CheckID {
+				if currentCheckResult.Status == api.HealthPassing {
+					continue OUTER
+				}
+			}
+			checksLeftToVerify = append(checksLeftToVerify, checkToVerify)
+		}
+	}
+	if len(checksLeftToVerify) > 0 {
+		log.Infof("Sleep for 1 second before next verification of health checks")
+		time.Sleep(time.Second)
+	}
+	return checksLeftToVerify
 }
 
 // DeregisterFromConsul will deregister service IDs from Consul that were created
@@ -218,8 +286,9 @@ func marathonAppNameToServiceName(name mesosutils.TaskID) string {
 	return sanitizedName
 }
 
-func generateHealthCheck(mesosCheck mesosutils.HealthCheck, port int) *api.AgentServiceCheck {
+func generateHealthCheck(serviceId string, mesosCheck mesosutils.HealthCheck, port int) *api.AgentServiceCheck {
 	check := api.AgentServiceCheck{}
+	check.CheckID = "service:" + serviceId
 	check.Interval = mesosCheck.Interval.String()
 	check.Timeout = mesosCheck.Timeout.String()
 

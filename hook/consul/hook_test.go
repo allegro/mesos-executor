@@ -2,6 +2,9 @@ package consul
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"testing"
 
@@ -54,6 +57,48 @@ func TestIfUsesLabelledPortsForServiceIDGen(t *testing.T) {
 	require.Contains(t, services[consulName], "otherTag")
 }
 
+func TestIfReturnsErrorIfHealthcheckDoesNotPassWithinDefinedTimeout(t *testing.T) {
+	serviceStub, serviceStubPort := createTestService(t, http.StatusInternalServerError)
+	defer serviceStub.Close()
+
+	consulName := "consulName"
+	taskID := "taskID"
+	taskInfo := prepareTaskInfo(taskID, consulName, consulName, []string{"metrics", "otherTag"}, []mesos.Port{
+		{Number: serviceStubPort},
+	})
+
+	// Create a test Consul server
+	config, server := createTestConsulServer(t)
+	client, _ := api.NewClient(config) // #nosec
+	defer stopConsul(server)
+
+	h := &Hook{config: Config{ConsulGlobalTag: "marathon", TimeoutForConsulHealthChecksInSeconds: 2}, client: client}
+	err := h.RegisterIntoConsul(taskInfo)
+	require.Error(t, err)
+}
+
+func TestIfNoErrorIfHealthcheckPassessWithinDefinedTimeout(t *testing.T) {
+	serviceStub, serviceStubPort := createTestService(t, http.StatusOK)
+	defer serviceStub.Close()
+
+	consulName := "consulName"
+	taskID := "taskID"
+
+	taskInfo := prepareTaskInfo(taskID, consulName, consulName, []string{"metrics", "otherTag"}, []mesos.Port{
+		{Number: serviceStubPort},
+	})
+
+	// Create a test Consul server
+	config, server := createTestConsulServer(t)
+	client, _ := api.NewClient(config) // #nosec
+	defer stopConsul(server)
+
+	h := &Hook{config: Config{ConsulGlobalTag: "marathon", TimeoutForConsulHealthChecksInSeconds: 2}, client: client}
+	err := h.RegisterIntoConsul(taskInfo)
+	require.NoError(t, err)
+	require.Len(t, h.serviceInstances, 1)
+}
+
 func TestIfUsesMesosHCForConsulCheck(t *testing.T) {
 	consulName := "consulName"
 	serviceName := "service:taskID_consulName_666"
@@ -74,6 +119,7 @@ func TestIfUsesMesosHCForConsulCheck(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, checks, serviceName)
 }
+
 
 func TestIfUsesFirstPortIfNoneIsLabelledForServiceIDGen(t *testing.T) {
 	consulName := "consulName"
@@ -469,6 +515,16 @@ func prepareTaskInfo(taskID string, taskName string, consulName string, tags []s
 			},
 		},
 	}}
+}
+
+func createTestService(t *testing.T, healthCheckStatus int) (server *httptest.Server, port uint32) {
+	serviceStub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(healthCheckStatus)
+	}))
+	serviceStubUrl, _ := url.Parse(serviceStub.URL)
+	serviceStubPort, _ := strconv.Atoi(serviceStubUrl.Port())
+
+	return serviceStub, uint32(serviceStubPort)
 }
 
 func createTestConsulServer(t *testing.T) (config *api.Config, server *testutil.TestServer) {
