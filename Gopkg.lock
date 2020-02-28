@@ -3,114 +3,174 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:52af3410147ff40243fa028083c10b0efcc5b06a60b6e20ce65be581d9ded452"
   name = "github.com/StackExchange/wmi"
   packages = ["."]
+  pruneopts = ""
   revision = "ea383cf3ba6ec950874b8486cd72356d007c768f"
 
 [[projects]]
+  digest = "1:047d950b57435d09fbb3586c3d0cc7bcf73d12f27ba25a933281cd194aee6fbd"
   name = "github.com/allegro/go-metrics-graphite"
   packages = ["."]
+  pruneopts = ""
   revision = "d8aec135f2c1e2d0fd86f55e9b85427ba6592490"
 
 [[projects]]
+  digest = "1:2fe63d3a6fadb481cac5c7dbc7072a5161e9e355136546938a18563868fa16d9"
+  name = "github.com/allegro/mesos-executor"
+  packages = [
+    ".",
+    "hook",
+    "hook/consul",
+    "hook/exec",
+    "hook/vaas",
+    "mesosutils",
+    "metrics",
+    "os",
+    "runenv",
+    "servicelog",
+    "servicelog/appender",
+    "servicelog/scraper",
+    "state",
+    "xio",
+    "xnet",
+    "xnet/xnettest",
+  ]
+  pruneopts = ""
+  revision = "267511bb2cc1d39f0eb14e5ce57823076805125e"
+  version = "v0.11.32"
+
+[[projects]]
+  digest = "1:c7b11da9bf0707e6920e1b361fbbbbe9b277ef3a198377baa4527f6e31049be0"
   name = "github.com/certifi/gocertifi"
   packages = ["."]
+  pruneopts = ""
   revision = "3fd9e1adb12b72d2f3f82191d49be9b93c69f67c"
   version = "2017.07.27"
 
 [[projects]]
+  digest = "1:56c130d885a4aacae1dd9c7b71cfe39912c7ebc1ff7d2b46083c8812996dc43b"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
+  pruneopts = ""
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
   version = "v1.1.0"
 
 [[projects]]
+  digest = "1:9be75617fdf960690a6322d1572f9c470d0cb23f27ccf44966e39b13fb26dbd0"
   name = "github.com/evalphobia/logrus_sentry"
   packages = ["."]
+  pruneopts = ""
   revision = "57846a82817615f185b10cc40de8dc60c1ca5ae1"
   version = "v0.4.5"
 
 [[projects]]
   branch = "master"
+  digest = "1:82da6a2b72827cb7031d3b9e44e24aebcf17e878e4c8af6ba16503021e2de6f9"
   name = "github.com/getsentry/raven-go"
   packages = ["."]
+  pruneopts = ""
   revision = "d175f85701dfbf44cb0510114c9943e665e60907"
 
 [[projects]]
+  digest = "1:6a4a01d58b227c4b6b11111b9f172ec5c17682b82724e58e6daf3f19f4faccd8"
   name = "github.com/go-logfmt/logfmt"
   packages = ["."]
+  pruneopts = ""
   revision = "390ab7935ee28ec6b286364bba9b4dd6410cb3d5"
   version = "v0.3.0"
 
 [[projects]]
+  digest = "1:27ccdd108c757f26910b9042fe59e1c0cedf573414022065613a917b8d8f2ee3"
   name = "github.com/go-ole/go-ole"
   packages = [
     ".",
-    "oleutil"
+    "oleutil",
   ]
+  pruneopts = ""
   revision = "0e87ea779d9deb219633b828a023b32e1244dd57"
   version = "v1.2.0"
 
 [[projects]]
+  digest = "1:be341383a4a9e1635573a4b84dbd9ef5d613f20e8283fc3f01f7de20c930d3cd"
   name = "github.com/gogo/protobuf"
   packages = ["proto"]
+  pruneopts = ""
   revision = "100ba4e885062801d56799d78530b73b178a78f3"
   version = "v0.4"
 
 [[projects]]
+  digest = "1:7e90224f25948f3efef5c53e9ddf7f77bd5ff3c53ac3bdac95ce7011d81a94fe"
   name = "github.com/hashicorp/consul"
   packages = [
     "api",
     "lib/freeport",
     "testutil",
-    "testutil/retry"
+    "testutil/retry",
   ]
+  pruneopts = ""
   revision = "9a494b5fb9c86180a5702e29c485df1507a47198"
   version = "v1.0.6"
 
 [[projects]]
   branch = "master"
+  digest = "1:ae263e6b149fb7aadfc0f2284a8891cc3b9d2700e58b9a613fecf70fcc6e495d"
   name = "github.com/hashicorp/go-cleanhttp"
   packages = ["."]
+  pruneopts = ""
   revision = "3573b8b52aa7b37b9358d966a898feb387f62437"
 
 [[projects]]
   branch = "master"
+  digest = "1:ff65bf6fc4d1116f94ac305342725c21b55c16819c2606adc8f527755716937f"
   name = "github.com/hashicorp/go-rootcerts"
   packages = ["."]
+  pruneopts = ""
   revision = "6bb64b370b90e7ef1fa532be9e591a81c3493e00"
 
 [[projects]]
   branch = "master"
+  digest = "1:50518e39c832eacbbd55a0ca08c6490911fe9483b06fa77468693a31b7893f3e"
   name = "github.com/hashicorp/go-uuid"
   packages = ["."]
+  pruneopts = ""
   revision = "64130c7a86d732268a38cb04cfbaf0cc987fda98"
 
 [[projects]]
+  digest = "1:f72168ea995f398bab88e84bd1ff58a983466ba162fb8d50d47420666cd57fad"
   name = "github.com/hashicorp/serf"
   packages = ["coordinate"]
+  pruneopts = ""
   revision = "d6574a5bb1226678d7010325fb6c985db20ee458"
   version = "v0.8.1"
 
 [[projects]]
+  digest = "1:9eab2325abbed0ebcee9d44bb3660a69d5d10e42d5ac4a0e77f7a6ea22bfce88"
   name = "github.com/json-iterator/go"
   packages = ["."]
+  pruneopts = ""
   revision = "ca39e5af3ece67bbcda3d0f4f56a8e24d9f2dad4"
   version = "1.1.3"
 
 [[projects]]
+  digest = "1:b60a24f942c7031ece6c48bcab0b683c7d3d6aa9fd17e21459d9ae604da258fa"
   name = "github.com/kelseyhightower/envconfig"
   packages = ["."]
+  pruneopts = ""
   revision = "f611eb38b3875cc3bd991ca91c51d06446afa14c"
   version = "v1.3.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:1ed9eeebdf24aadfbca57eb50e6455bd1d2474525e0f0d4454de8c8e9bc7ee9a"
   name = "github.com/kr/logfmt"
   packages = ["."]
+  pruneopts = ""
   revision = "b84e30acd515aadc4b783ad4ff83aff3299bdfe0"
 
 [[projects]]
+  digest = "1:a5b67f8c47162ecd4a41f0004bb9c3cf1930fe03b9d427b6c7d813daea355a97"
   name = "github.com/mesos/mesos-go"
   packages = [
     "api/v1/lib",
@@ -123,67 +183,87 @@
     "api/v1/lib/executor/config",
     "api/v1/lib/httpcli",
     "api/v1/lib/recordio",
-    "api/v1/lib/time"
+    "api/v1/lib/time",
   ]
+  pruneopts = ""
   revision = "36b30d8a146d425c9cbd70afe86f667540a248e3"
 
 [[projects]]
   branch = "master"
+  digest = "1:59d11e81d6fdd12a771321696bb22abdd9a94d26ac864787e98c9b419e428734"
   name = "github.com/mitchellh/go-homedir"
   packages = ["."]
+  pruneopts = ""
   revision = "b8bc1bf767474819792c23f32d8286a45736f1c6"
 
 [[projects]]
   branch = "master"
+  digest = "1:51c98e2c9a8d0a724a69f46421876af14e12132cb02f1d0e144785d752247162"
   name = "github.com/mitchellh/go-testing-interface"
   packages = ["."]
+  pruneopts = ""
   revision = "a61a99592b77c9ba629d254a693acffaeb4b7e28"
 
 [[projects]]
+  digest = "1:0c0ff2a89c1bb0d01887e1dac043ad7efbf3ec77482ef058ac423d13497e16fd"
   name = "github.com/modern-go/concurrent"
   packages = ["."]
+  pruneopts = ""
   revision = "bacd9c7ef1dd9b15be4a9909b8ac7a4e313eec94"
   version = "1.0.3"
 
 [[projects]]
+  digest = "1:420f9231f816eeca3ff5aab070caac3ed7f27e4d37ded96ce9de3d7a7a2e31ad"
   name = "github.com/modern-go/reflect2"
   packages = ["."]
+  pruneopts = ""
   revision = "1df9eeb2bb81f327b96228865c5687bc2194af3f"
   version = "1.0.0"
 
 [[projects]]
+  digest = "1:63e142fc50307bcb3c57494913cfc9c12f6061160bdf97a678f78c71615f939b"
   name = "github.com/pborman/uuid"
   packages = ["."]
+  pruneopts = ""
   revision = "e790cca94e6cc75c7064b1332e63811d4aae1a53"
   version = "v1.1"
 
 [[projects]]
   branch = "master"
+  digest = "1:3feb34391c5d3f22c7aea09e6c04caae198a9cd196d33e2af11e371296523e7e"
   name = "github.com/pkg/errors"
   packages = ["."]
+  pruneopts = ""
   revision = "c605e284fe17294bda444b34710735b29d1a9d90"
 
 [[projects]]
+  digest = "1:256484dbbcd271f9ecebc6795b2df8cad4c458dd0f5fd82a8c2fa0c29f233411"
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
+  pruneopts = ""
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:d4c51ceb20a649fcd11338eeb6b26f72cb5e4f95072265e3cb23a5265b7461f2"
   name = "github.com/pquerna/ffjson"
   packages = [
     "fflib/v1",
-    "fflib/v1/internal"
+    "fflib/v1/internal",
   ]
+  pruneopts = ""
   revision = "5333e98ee8b90e40336e56eb540641519813383b"
 
 [[projects]]
+  digest = "1:5e3f4c2357e1e95ede9f36dc027b4b5a2cca463c8899344c22ebeb7c0abab8d5"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
+  pruneopts = ""
   revision = "1f30fe9094a513ce4c700b9a54458bbb0c96996c"
 
 [[projects]]
+  digest = "1:2545d4b14339fa4d59267964c6940f2af1aa9b870b8891bc823ba08136dfbd7d"
   name = "github.com/shirou/gopsutil"
   packages = [
     "cpu",
@@ -191,68 +271,126 @@
     "internal/common",
     "mem",
     "net",
-    "process"
+    "process",
   ]
+  pruneopts = ""
   revision = "114c78c777eb86b58e40910cbd3fc451829c366d"
   version = "v2.17.07"
 
 [[projects]]
   branch = "master"
+  digest = "1:99c6a6dab47067c9b898e8c8b13d130c6ab4ffbcc4b7cc6236c2cd0b1e344f5b"
   name = "github.com/shirou/w32"
   packages = ["."]
+  pruneopts = ""
   revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
+  digest = "1:8cf46b6c18a91068d446e26b67512cf16f1540b45d90b28b9533706a127f0ca6"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
+  pruneopts = ""
   revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
   version = "v1.0.5"
 
 [[projects]]
   branch = "master"
+  digest = "1:ed7ac53c7d59041f27964d3f04e021b45ecb5f23c842c84d778a7f1fb67e2ce9"
   name = "github.com/stretchr/objx"
   packages = ["."]
+  pruneopts = ""
   revision = "1a9d0bb9f541897e62256577b352fdbc1fb4fd94"
 
 [[projects]]
+  digest = "1:999ae44a8b352562cc0b610a0616e70e91cc60573e1b884b9575b465725d55d3"
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
     "mock",
-    "require"
+    "require",
   ]
+  pruneopts = ""
   revision = "f6abca593680b2315d2075e0f5e2a9751e3f431a"
 
 [[projects]]
   branch = "master"
+  digest = "1:c3415eeb330bf30a2d8181e516ec79804c198f3d171ab9c9364f29dbe76c05d9"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
+  pruneopts = ""
   revision = "94eea52f7b742c7cbe0b03b22f0c4c8631ece122"
 
 [[projects]]
   branch = "master"
+  digest = "1:4870f8f94d93a08d7fbe4b8dcdfaad5838b2d2d905ce09ddc4c8ea392c9bd70c"
   name = "golang.org/x/net"
   packages = ["context"]
+  pruneopts = ""
   revision = "42fe2e1c20de1054d3d30f82cc9fb5b41e2e3767"
 
 [[projects]]
   branch = "master"
+  digest = "1:9c04991900c09095dc0c6babc0c794f6cd4efaecc21e4455f45a6674d36ee500"
   name = "golang.org/x/sys"
   packages = [
     "unix",
-    "windows"
+    "windows",
   ]
+  pruneopts = ""
   revision = "b0e0dd72976dc482b6cb37c5640440f876ac1907"
 
 [[projects]]
   branch = "master"
+  digest = "1:962626db478d8aa0ae5a1d99c2b367acc756346c6657780a91252cfda66a67d3"
   name = "golang.org/x/time"
   packages = ["rate"]
+  pruneopts = ""
   revision = "6dc17368e09b0e8634d71cac8168d853e869a0c7"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "04b94c39ea1bb3386e98969f72a1b304fe4ee30ea819e76064dee2153f650cd5"
+  input-imports = [
+    "github.com/allegro/go-metrics-graphite",
+    "github.com/allegro/mesos-executor",
+    "github.com/allegro/mesos-executor/hook",
+    "github.com/allegro/mesos-executor/hook/consul",
+    "github.com/allegro/mesos-executor/hook/exec",
+    "github.com/allegro/mesos-executor/hook/vaas",
+    "github.com/allegro/mesos-executor/mesosutils",
+    "github.com/allegro/mesos-executor/metrics",
+    "github.com/allegro/mesos-executor/os",
+    "github.com/allegro/mesos-executor/runenv",
+    "github.com/allegro/mesos-executor/servicelog",
+    "github.com/allegro/mesos-executor/servicelog/appender",
+    "github.com/allegro/mesos-executor/servicelog/scraper",
+    "github.com/allegro/mesos-executor/state",
+    "github.com/allegro/mesos-executor/xio",
+    "github.com/allegro/mesos-executor/xnet",
+    "github.com/allegro/mesos-executor/xnet/xnettest",
+    "github.com/evalphobia/logrus_sentry",
+    "github.com/getsentry/raven-go",
+    "github.com/go-logfmt/logfmt",
+    "github.com/hashicorp/consul/api",
+    "github.com/hashicorp/consul/testutil",
+    "github.com/json-iterator/go",
+    "github.com/kelseyhightower/envconfig",
+    "github.com/mesos/mesos-go/api/v1/lib",
+    "github.com/mesos/mesos-go/api/v1/lib/backoff",
+    "github.com/mesos/mesos-go/api/v1/lib/encoding",
+    "github.com/mesos/mesos-go/api/v1/lib/executor",
+    "github.com/mesos/mesos-go/api/v1/lib/executor/calls",
+    "github.com/mesos/mesos-go/api/v1/lib/executor/config",
+    "github.com/mesos/mesos-go/api/v1/lib/httpcli",
+    "github.com/pborman/uuid",
+    "github.com/pkg/errors",
+    "github.com/rcrowley/go-metrics",
+    "github.com/shirou/gopsutil/process",
+    "github.com/sirupsen/logrus",
+    "github.com/stretchr/testify/assert",
+    "github.com/stretchr/testify/mock",
+    "github.com/stretchr/testify/require",
+    "golang.org/x/time/rate",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

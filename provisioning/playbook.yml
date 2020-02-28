@@ -42,66 +42,67 @@
   - name: install development dependencies
     apt: name={{ item }} state=present force=true
     with_items:
-      - marathon
-      - mesos
-      - nginx
-      - oracle-java8-installer
-      - oracle-java8-set-default
+      #- marathon
+      #- mesos
+      #- nginx
+      #- oracle-java8-installer
+      #- oracle-java8-set-default
+      - unzip
       - supervisor
 
-  - name: configure mesos slave
-    copy:
-      src: executor_environment_variables
-      dest: /etc/mesos-slave/executor_environment_variables
-      owner: root
-      group: root
-      mode: 0644
-    register: mesos_slave_config
+#  - name: configure mesos slave
+#    copy:
+#      src: executor_environment_variables
+#      dest: /etc/mesos-slave/executor_environment_variables
+#      owner: root
+#      group: root
+#      mode: 0644
+#    register: mesos_slave_config
 
-  - name: reload mesos slave configuration
-    service:
-      name: mesos-slave
-      state: reloaded
-    when: mesos_slave_config.changed
+#  - name: reload mesos slave configuration
+#    service:
+#      name: mesos-slave
+#      state: reloaded
+#    when: mesos_slave_config.changed
 
-  - name: configure nginx site
-    copy:
-      src: default
-      dest: /etc/nginx/sites-available/default
-      owner: root
-      group: root
-      mode: 0644
-    register: nginx_config
-
-  - name: reload nginx configuration
-    service:
-      name: nginx
-      state: reloaded
-    when: nginx_config.changed
-
-  - name: enable and start marathon service
-    service:
-      name: marathon
-      enabled: yes
-      state: started
-
-  - name: enable and start mesos-master service
-    service:
-      name: mesos-master
-      enabled: yes
-      state: started
-
-  - name: enable and start mesos-slave service
-    service:
-      name: mesos-slave
-      enabled: yes
-      state: started
-
-  - name: enable and start nginx service
-    service:
-      name: nginx
-      enabled: yes
-      state: started
+#  - name: configure nginx site
+#    copy:
+#      src: default
+#      dest: /etc/nginx/sites-available/default
+#      owner: root
+#      group: root
+#      mode: 0644
+#    register: nginx_config
+#
+#  - name: reload nginx configuration
+#    service:
+#      name: nginx
+#      state: reloaded
+#    when: nginx_config.changed
+#
+#  - name: enable and start marathon service
+#    service:
+#      name: marathon
+#      enabled: yes
+#      state: started
+#
+#  - name: enable and start mesos-master service
+#    service:
+#      name: mesos-master
+#      enabled: yes
+#      state: started
+#
+#  - name: enable and start mesos-slave service
+#    service:
+#      name: mesos-slave
+#      enabled: yes
+#      state: started
+#
+#  - name: enable and start nginx service
+#    service:
+#      name: nginx
+#      enabled: yes
+#      state: started
 
   - name: download and install consul
     unarchive:
