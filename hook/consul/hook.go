@@ -41,7 +41,7 @@ type Hook struct {
 	serviceInstances []instance
 }
 
-// Check that should be checked in consul before changing service state to healthy on mesos
+// ServiceCheckToVerify that should be checked in consul before changing service state to healthy on mesos
 type ServiceCheckToVerify struct {
 	consulServiceName string
 	check *api.AgentServiceCheck
@@ -175,8 +175,8 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 	return h.VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfterRegistration)
 }
 
-// Waits for change all service health checks status to passing
-// It this state does not change within defined TimeoutForConsulHealthChecksInSeconds timeout
+// VerifyConsulChecksAfterRegistrationWithTimeout function - triggers checking of service health checks
+// It their state does not change within defined TimeoutForConsulHealthChecksInSeconds timeout
 // service will not be marked as healthy on Mesos
 func (h *Hook) VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfterRegistration []ServiceCheckToVerify) error {
 	if h.config.TimeoutForConsulHealthChecksInSeconds == 0 {
@@ -186,7 +186,6 @@ func (h *Hook) VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfte
 	go func() {
 		for len(checksToVerifyAfterRegistration) > 0 {
 			checksToVerifyAfterRegistration = h.VerifyConsulChecks(checksToVerifyAfterRegistration)
-
 		}
 		c <- true
 	} ()
@@ -199,6 +198,8 @@ func (h *Hook) VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfte
 	}
 }
 
+// VerifyConsulChecks - checks status of all service health checks
+// Checks that not pass are returned as function result.
 func (h *Hook) VerifyConsulChecks(checksToVerifyAfterRegistration []ServiceCheckToVerify) []ServiceCheckToVerify{
 	var checksLeftToVerify []ServiceCheckToVerify
 	health := h.client.Health()
@@ -286,9 +287,9 @@ func marathonAppNameToServiceName(name mesosutils.TaskID) string {
 	return sanitizedName
 }
 
-func generateHealthCheck(serviceId string, mesosCheck mesosutils.HealthCheck, port int) *api.AgentServiceCheck {
+func generateHealthCheck(serviceID string, mesosCheck mesosutils.HealthCheck, port int) *api.AgentServiceCheck {
 	check := api.AgentServiceCheck{}
-	check.CheckID = "service:" + serviceId
+	check.CheckID = "service:" + serviceID
 	check.Interval = mesosCheck.Interval.String()
 	check.Timeout = mesosCheck.Timeout.String()
 
