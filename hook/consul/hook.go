@@ -44,7 +44,7 @@ type Hook struct {
 // ServiceCheckToVerify that should be checked in consul before changing service state to healthy on mesos
 type ServiceCheckToVerify struct {
 	consulServiceName string
-	check             *api.AgentServiceCheck
+	check *api.AgentServiceCheck
 }
 
 // Config is Consul hook configuration settable from environment
@@ -166,9 +166,9 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 		log.Debugf("Service %q registered in Consul with port %d and ID %q", serviceData.consulServiceName, serviceData.port, serviceData.consulServiceID)
 		log.Infof("Adding service ID %q to deregister before termination", serviceData.consulServiceID)
 		h.serviceInstances = append(h.serviceInstances, serviceData)
-		checksToVerifyAfterRegistration = append(checksToVerifyAfterRegistration, ServiceCheckToVerify{
+		checksToVerifyAfterRegistration = append(checksToVerifyAfterRegistration, ServiceCheckToVerify {
 			consulServiceName: serviceData.consulServiceName,
-			check:             serviceHealthCheck,
+			check: serviceHealthCheck,
 		})
 	}
 	log.Infof("Checking status of registered consul health checks")
@@ -188,9 +188,9 @@ func (h *Hook) VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfte
 			checksToVerifyAfterRegistration = h.VerifyConsulChecks(checksToVerifyAfterRegistration)
 		}
 		c <- true
-	}()
+	} ()
 	select {
-	case <-c:
+	case <- c:
 		return nil
 	case <-time.After(h.config.TimeoutForConsulHealthChecksInSeconds * time.Second):
 		log.Warnf("After %d seconds %d health checks still fails", h.config.TimeoutForConsulHealthChecksInSeconds, len(checksToVerifyAfterRegistration))
@@ -200,13 +200,13 @@ func (h *Hook) VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfte
 
 // VerifyConsulChecks - checks status of all service health checks
 // Checks that not pass are returned as function result.
-func (h *Hook) VerifyConsulChecks(checksToVerifyAfterRegistration []ServiceCheckToVerify) []ServiceCheckToVerify {
+func (h *Hook) VerifyConsulChecks(checksToVerifyAfterRegistration []ServiceCheckToVerify) []ServiceCheckToVerify{
 	var checksLeftToVerify []ServiceCheckToVerify
 	health := h.client.Health()
-OUTER:
+	OUTER:
 	for _, checkToVerify := range checksToVerifyAfterRegistration {
-		serviceChecksResult, _, err := health.Checks(checkToVerify.consulServiceName, nil)
-		if err != nil {
+		serviceChecksResult,_ , err := health.Checks(checkToVerify.consulServiceName, nil)
+		if  err != nil {
 			log.WithError(err).Warnf("Error during checking health check for service %q", checkToVerify.consulServiceName)
 			continue
 		}

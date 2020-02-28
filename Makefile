@@ -43,7 +43,7 @@ package: $(BUILD_FOLDER)/executor
 	chmod 0755 $(BUILD_FOLDER)/executor-$(APPLICATION_VERSION)-linux-amd64.zip
 
 test: test-deps
-	go test -test.streamlogs -v -coverprofile=$(BUILD_FOLDER)/coverage.txt -covermode=atomic -run TestIfNoErrorIfHealthcheckPassessWithinDefinedTimeout ./...
+	go test -coverprofile=$(BUILD_FOLDER)/coverage.txt -covermode=atomic ./...
 
 test-deps: $(BUILD_FOLDER)
 	./scripts/install-consul.sh
