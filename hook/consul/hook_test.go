@@ -93,7 +93,7 @@ func TestIfNoErrorIfHealthcheckPassessWithinDefinedTimeout(t *testing.T) {
 	client, _ := api.NewClient(config) // #nosec
 	defer stopConsul(server)
 
-	h := &Hook{config: Config{ConsulGlobalTag: "marathon", TimeoutForConsulHealthChecksInSeconds: 2}, client: client}
+	h := &Hook{config: Config{ConsulGlobalTag: "marathon", TimeoutForConsulHealthChecksInSeconds: 5}, client: client}
 	err := h.RegisterIntoConsul(taskInfo)
 	require.NoError(t, err)
 	require.Len(t, h.serviceInstances, 1)
