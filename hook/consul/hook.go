@@ -41,10 +41,10 @@ type Hook struct {
 	serviceInstances []instance
 }
 
-// ServiceCheckToVerify that should be checked in consul before changing service state to healthy on mesos
+// ServiceCheckToVerify defines service that consul health checks should be checked before changing service state to healthy on mesos
 type ServiceCheckToVerify struct {
 	consulServiceName string
-	check             *api.AgentServiceCheck
+	consulServiceID   string
 }
 
 // Config is Consul hook configuration settable from environment
@@ -146,7 +146,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 	var checksToVerifyAfterRegistration []ServiceCheckToVerify
 	agent := h.client.Agent()
 	for _, serviceData := range instancesToRegister {
-		serviceHealthCheck := generateHealthCheck(serviceData.consulServiceID, taskInfo.GetHealthCheck(), int(serviceData.port))
+		serviceHealthCheck := generateHealthCheck(taskInfo.GetHealthCheck(), int(serviceData.port))
 
 		serviceRegistration := api.AgentServiceRegistration{
 			ID:                serviceData.consulServiceID,
@@ -168,7 +168,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 		h.serviceInstances = append(h.serviceInstances, serviceData)
 		checksToVerifyAfterRegistration = append(checksToVerifyAfterRegistration, ServiceCheckToVerify{
 			consulServiceName: serviceData.consulServiceName,
-			check:             serviceHealthCheck,
+			consulServiceID:   serviceData.consulServiceID,
 		})
 	}
 	log.Infof("Checking status of registered consul health checks")
@@ -176,7 +176,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 }
 
 // VerifyConsulChecksAfterRegistrationWithTimeout function - triggers checking of service health checks
-// It their state does not change within defined TimeoutForConsulHealthChecksInSeconds timeout
+// If their state does not change within defined TimeoutForConsulHealthChecksInSeconds timeout
 // service will not be marked as healthy on Mesos
 func (h *Hook) VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfterRegistration []ServiceCheckToVerify) error {
 	if h.config.TimeoutForConsulHealthChecksInSeconds == 0 {
@@ -211,12 +211,12 @@ OUTER:
 			continue
 		}
 		for _, currentCheckResult := range serviceChecksResult {
-			if currentCheckResult.CheckID == checkToVerify.check.CheckID {
-				if currentCheckResult.Status == api.HealthPassing {
+			if currentCheckResult.ServiceID == checkToVerify.consulServiceID {
+				if currentCheckResult.Status != api.HealthPassing {
+					checksLeftToVerify = append(checksLeftToVerify, checkToVerify)
 					continue OUTER
 				}
 			}
-			checksLeftToVerify = append(checksLeftToVerify, checkToVerify)
 		}
 	}
 	if len(checksLeftToVerify) > 0 {
@@ -287,9 +287,8 @@ func marathonAppNameToServiceName(name mesosutils.TaskID) string {
 	return sanitizedName
 }
 
-func generateHealthCheck(serviceID string, mesosCheck mesosutils.HealthCheck, port int) *api.AgentServiceCheck {
+func generateHealthCheck(mesosCheck mesosutils.HealthCheck, port int) *api.AgentServiceCheck {
 	check := api.AgentServiceCheck{}
-	check.CheckID = "service:" + serviceID
 	check.Interval = mesosCheck.Interval.String()
 	check.Timeout = mesosCheck.Timeout.String()
 
