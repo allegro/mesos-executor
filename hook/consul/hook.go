@@ -143,6 +143,8 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 			},
 		}
 	}
+	log.Infof("I'm here")
+
 	var checksToVerifyAfterRegistration []ServiceCheckToVerify
 	agent := h.client.Agent()
 	for _, serviceData := range instancesToRegister {
@@ -171,7 +173,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 			consulServiceID:   serviceData.consulServiceID,
 		})
 	}
-	log.Infof("Checking status of registered consul health checks")
+	log.Infof("Checking status of registered Consul health checks")
 	return h.VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfterRegistration)
 }
 
