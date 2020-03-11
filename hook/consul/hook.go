@@ -66,7 +66,7 @@ type Config struct {
 	// If service health checks are not healthy within specified timeout
 	// service status will not be set to healthy.
 	// Setting to zero disables health checks verification
-	TimeoutForConsulHealthChecksInSeconds time.Duration `default:"0" envconfig:"consul_healthcheck_timeout"`
+	TimeoutForConsulHealthChecksInSeconds time.Duration `default:"0s" envconfig:"consul_healthcheck_timeout"`
 }
 
 // HandleEvent calls appropriate hook functions that correspond to supported
