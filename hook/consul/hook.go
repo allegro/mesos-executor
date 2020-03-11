@@ -85,6 +85,8 @@ func (h *Hook) HandleEvent(event hook.Event) (hook.Env, error) {
 
 // RegisterIntoConsul generates an id and sends service information to Consul Agent
 func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
+	log.Infof("I'm here")
+
 	consulLabel := taskInfo.FindLabel(consulNameLabelKey)
 
 	if consulLabel == nil {
@@ -143,7 +145,6 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 			},
 		}
 	}
-	log.Infof("I'm here")
 
 	var checksToVerifyAfterRegistration []ServiceCheckToVerify
 	agent := h.client.Agent()
