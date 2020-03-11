@@ -172,7 +172,6 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 			consulServiceID:   serviceData.consulServiceID,
 		})
 	}
-	log.Infof("Checking status of registered Consul health checks %s", h.config)
 	return h.VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfterRegistration)
 }
 
@@ -183,6 +182,8 @@ func (h *Hook) VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfte
 	if h.config.TimeoutForConsulHealthChecksInSeconds == 0 {
 		return nil
 	}
+	log.Infof("Checking status of registered Consul health checks with timeout %s", h.config.TimeoutForConsulHealthChecksInSeconds.String())
+
 	c := make(chan bool, 1)
 	go func() {
 		for len(checksToVerifyAfterRegistration) > 0 {
@@ -193,9 +194,9 @@ func (h *Hook) VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfte
 	select {
 	case <-c:
 		return nil
-	case <-time.After(h.config.TimeoutForConsulHealthChecksInSeconds * time.Second):
-		log.Warnf("After %d seconds %d health checks still fails", h.config.TimeoutForConsulHealthChecksInSeconds, len(checksToVerifyAfterRegistration))
-		return fmt.Errorf("after %d seconds %d health checks still fails", h.config.TimeoutForConsulHealthChecksInSeconds, len(checksToVerifyAfterRegistration))
+	case <-time.After(h.config.TimeoutForConsulHealthChecksInSeconds):
+		log.Warnf("After %s seconds %d health checks still fails", h.config.TimeoutForConsulHealthChecksInSeconds.String(), len(checksToVerifyAfterRegistration))
+		return fmt.Errorf("after %s seconds %d health checks still fails", h.config.TimeoutForConsulHealthChecksInSeconds.String(), len(checksToVerifyAfterRegistration))
 	}
 }
 
@@ -204,7 +205,7 @@ func (h *Hook) VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfte
 func (h *Hook) VerifyConsulChecks(checksToVerifyAfterRegistration []ServiceCheckToVerify) []ServiceCheckToVerify {
 	var checksLeftToVerify []ServiceCheckToVerify
 	health := h.client.Health()
-	log.Infof("Start of checking health checks %s", h.config)
+	log.Infof("Start of checking health checks")
 	OUTER:
 	for _, checkToVerify := range checksToVerifyAfterRegistration {
 		serviceChecksResult, _, err := health.Checks(checkToVerify.consulServiceName, nil)
