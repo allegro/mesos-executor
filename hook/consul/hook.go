@@ -172,7 +172,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 			consulServiceID:   serviceData.consulServiceID,
 		})
 	}
-	log.Infof("Checking status of registered Consul health checks")
+	log.Infof("Checking status of registered Consul health checks %s", h.config)
 	return h.VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfterRegistration)
 }
 
