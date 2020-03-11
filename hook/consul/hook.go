@@ -204,7 +204,7 @@ func (h *Hook) VerifyConsulChecksAfterRegistrationWithTimeout(checksToVerifyAfte
 func (h *Hook) VerifyConsulChecks(checksToVerifyAfterRegistration []ServiceCheckToVerify) []ServiceCheckToVerify {
 	var checksLeftToVerify []ServiceCheckToVerify
 	health := h.client.Health()
-	log.Infof("Start of checking health checks")
+	log.Infof("Start of checking health checks %s", h.config)
 	OUTER:
 	for _, checkToVerify := range checksToVerifyAfterRegistration {
 		serviceChecksResult, _, err := health.Checks(checkToVerify.consulServiceName, nil)
