@@ -85,8 +85,6 @@ func (h *Hook) HandleEvent(event hook.Event) (hook.Env, error) {
 
 // RegisterIntoConsul generates an id and sends service information to Consul Agent
 func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
-	log.Infof("I'm here")
-
 	consulLabel := taskInfo.FindLabel(consulNameLabelKey)
 
 	if consulLabel == nil {
@@ -207,6 +205,7 @@ func (h *Hook) VerifyConsulChecks(checksToVerifyAfterRegistration []ServiceCheck
 	var checksLeftToVerify []ServiceCheckToVerify
 	health := h.client.Health()
 OUTER:
+	log.Infof("Start of checking health checks")
 	for _, checkToVerify := range checksToVerifyAfterRegistration {
 		serviceChecksResult, _, err := health.Checks(checkToVerify.consulServiceName, nil)
 		if err != nil {
@@ -215,10 +214,13 @@ OUTER:
 		}
 		for _, currentCheckResult := range serviceChecksResult {
 			if currentCheckResult.ServiceID == checkToVerify.consulServiceID {
+				log.Infof("Health check status %s %s", currentCheckResult.Name, currentCheckResult.Status)
 				if currentCheckResult.Status != api.HealthPassing {
 					checksLeftToVerify = append(checksLeftToVerify, checkToVerify)
 					continue OUTER
 				}
+			} else {
+				log.Infof("Difference service check %s %s", currentCheckResult.ServiceID, checkToVerify.consulServiceID)
 			}
 		}
 	}
