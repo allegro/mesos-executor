@@ -197,8 +197,6 @@ func (h *Hook) generateHealthCheck(mesosCheck mesosutils.HealthCheck, port int) 
 	return nil
 }
 
-
-
 func getPlaceholders(ports []mesos.Port) map[string]string {
 	placeholders := map[string]string{}
 	for _, port := range ports {
