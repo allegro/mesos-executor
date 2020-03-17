@@ -222,7 +222,7 @@ func generateHealthCheck(mesosCheck mesosutils.HealthCheck, port int) *api.Agent
 	check := api.AgentServiceCheck{}
 	check.Interval = mesosCheck.Interval.String()
 	check.Timeout = mesosCheck.Timeout.String()
-	check.Status = api.HealthPassing
+	check.Status = api.HealthWarning
 
 	switch mesosCheck.Type {
 	case mesosutils.HTTP:
