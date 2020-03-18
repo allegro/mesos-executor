@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/consul/api"
 	log "github.com/sirupsen/logrus"
@@ -59,6 +60,9 @@ type Config struct {
 	// By default we assume service health was checked initially by marathon
 	// It will be set to passing.
 	InitialHealthCheckStatus string `default:"passing" envconfig:"initial_health_check_status"`
+	// Delay for changing service state to unhealthy after it's deregistration from consul
+	// It allows to minimize problems with instances propagation to different consul agents
+	KeepServiceHealthyAfterDeregistrationTime time.Duration `default:"5s" envconfig:"keep_service_healthy_after_deregistration_time"`
 }
 
 // HandleEvent calls appropriate hook functions that correspond to supported
@@ -176,7 +180,7 @@ func (h *Hook) DeregisterFromConsul(taskInfo mesosutils.TaskInfo) error {
 		}
 	}
 	h.serviceInstances = ghostInstances
-
+	time.Sleep(h.config.KeepServiceHealthyAfterDeregistrationTime)
 	return nil
 }
 
