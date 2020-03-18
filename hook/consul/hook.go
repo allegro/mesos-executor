@@ -55,6 +55,10 @@ type Config struct {
 	// > should be unique for every Marathon-cluster connected to Consul
 	// https://github.com/allegro/marathon-consul/blob/1.4.2/config/config.go#L74
 	ConsulGlobalTag string `default:"marathon" envconfig:"consul_global_tag"`
+	// Status that will be set for registered service health check
+	// By default we assume service health was checked initially by marathon
+	// It will be set to passing.
+	InitialHealthCheckStatus string `default:"passing" envconfig:"initial_health_check_status"`
 }
 
 // HandleEvent calls appropriate hook functions that correspond to supported
@@ -142,7 +146,7 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 			Address:           runenv.IP().String(),
 			EnableTagOverride: false,
 			Checks:            api.AgentServiceChecks{},
-			Check:             generateHealthCheck(taskInfo.GetHealthCheck(), int(serviceData.port)),
+			Check:             h.generateHealthCheck(taskInfo.GetHealthCheck(), int(serviceData.port)),
 		}
 
 		if err := agent.ServiceRegister(&serviceRegistration); err != nil {
@@ -173,6 +177,23 @@ func (h *Hook) DeregisterFromConsul(taskInfo mesosutils.TaskInfo) error {
 	}
 	h.serviceInstances = ghostInstances
 
+	return nil
+}
+
+func (h *Hook) generateHealthCheck(mesosCheck mesosutils.HealthCheck, port int) *api.AgentServiceCheck {
+	check := api.AgentServiceCheck{}
+	check.Interval = mesosCheck.Interval.String()
+	check.Timeout = mesosCheck.Timeout.String()
+	check.Status = h.config.InitialHealthCheckStatus
+
+	switch mesosCheck.Type {
+	case mesosutils.HTTP:
+		check.HTTP = generateURL(mesosCheck.HTTP.Path, port)
+		return &check
+	case mesosutils.TCP:
+		check.TCP = fmt.Sprintf("%s:%d", serviceHost, port)
+		return &check
+	}
 	return nil
 }
 
@@ -216,22 +237,6 @@ func marathonAppNameToServiceName(name mesosutils.TaskID) string {
 		return strings.Join(parts[0:len(parts)-1], ".")
 	}
 	return sanitizedName
-}
-
-func generateHealthCheck(mesosCheck mesosutils.HealthCheck, port int) *api.AgentServiceCheck {
-	check := api.AgentServiceCheck{}
-	check.Interval = mesosCheck.Interval.String()
-	check.Timeout = mesosCheck.Timeout.String()
-
-	switch mesosCheck.Type {
-	case mesosutils.HTTP:
-		check.HTTP = generateURL(mesosCheck.HTTP.Path, port)
-		return &check
-	case mesosutils.TCP:
-		check.TCP = fmt.Sprintf("%s:%d", serviceHost, port)
-		return &check
-	}
-	return nil
 }
 
 func generateURL(path string, port int) string {
