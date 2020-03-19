@@ -180,7 +180,10 @@ func (h *Hook) DeregisterFromConsul(taskInfo mesosutils.TaskInfo) error {
 		}
 	}
 	h.serviceInstances = ghostInstances
-	time.Sleep(h.config.KeepServiceHealthyAfterDeregistrationTime)
+	if h.config.KeepServiceHealthyAfterDeregistrationTime > 0 {
+		log.Infof("Wait for %d after consul deregistration", h.config.KeepServiceHealthyAfterDeregistrationTime)
+		time.Sleep(h.config.KeepServiceHealthyAfterDeregistrationTime)
+	}
 	return nil
 }
 
