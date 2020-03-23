@@ -62,7 +62,7 @@ type Config struct {
 	InitialHealthCheckStatus string `default:"passing" envconfig:"initial_health_check_status"`
 	// Delay for changing service state to unhealthy after it's deregistration from consul
 	// It allows to minimize problems with instances propagation to different consul agents
-	KeepServiceHealthyAfterDeregistrationTime time.Duration `default:"5s" envconfig:"keep_service_healthy_after_deregistration_time"`
+	KeepServiceHealthyAfterDeregistrationTime time.Duration `default:"0s" envconfig:"keep_service_healthy_after_deregistration_time"`
 }
 
 // HandleEvent calls appropriate hook functions that correspond to supported
@@ -181,7 +181,7 @@ func (h *Hook) DeregisterFromConsul(taskInfo mesosutils.TaskInfo) error {
 	}
 	h.serviceInstances = ghostInstances
 	if h.config.KeepServiceHealthyAfterDeregistrationTime > 0 {
-		log.Infof("Wait for %d after consul deregistration", h.config.KeepServiceHealthyAfterDeregistrationTime)
+		log.Infof("Wait for %s after consul deregistration", h.config.KeepServiceHealthyAfterDeregistrationTime.String())
 		time.Sleep(h.config.KeepServiceHealthyAfterDeregistrationTime)
 	}
 	return nil
