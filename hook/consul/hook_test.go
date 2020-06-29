@@ -155,6 +155,72 @@ func TestIfUsesLabelledPortsForServiceIDGenAndRegisterMultiplePorts(t *testing.T
 	require.Contains(t, services, consulNameSecond)
 }
 
+func TestIfUsesCompoundLabelledPortsForServiceIDGenAndRegisterSinglePortWithMultipleNames(t *testing.T) {
+	// given
+	consulName := "consulName,consulName-secured"
+	taskID := "taskID"
+	securedTagValue := "tag:consulName-secured"
+	insecureTagValue := "tag:consulName"
+	commonTagValue := "tag"
+	taskInfo := prepareTaskInfo(taskID, consulName, consulName, []string{"metrics"}, []mesos.Port{
+		{
+			Number: 998,
+			Labels: &mesos.Labels{
+				Labels: []mesos.Label{
+					{
+						Key:   "consul",
+						Value: &consulName,
+					},
+					{
+						Key:   "secure",
+						Value: &securedTagValue,
+					},
+					{
+						Key:   "insecure",
+						Value: &insecureTagValue,
+					},
+					{
+						Key:   "common",
+						Value: &commonTagValue,
+					},
+				},
+			},
+		},
+	})
+	expectedService := instance{
+		consulServiceName: "consulName",
+		consulServiceID:   createServiceID(taskID, "consulName", 998),
+		port:              998,
+		tags:              []string{"insecure", "common", "metrics", "marathon", "marathon-task:taskID"},
+	}
+	expectedService2 := instance{
+		consulServiceName: "consulName-secured",
+		consulServiceID:   createServiceID(taskID, "consulName-secured", 998),
+		port:              998,
+		tags:              []string{"secure", "common", "metrics", "marathon", "marathon-task:taskID"},
+	}
+
+	// Create a test Consul server
+	config, server := createTestConsulServer(t)
+	client, _ := api.NewClient(config) // #nosec
+	defer stopConsul(server)
+
+	h := &Hook{config: Config{ConsulGlobalTag: "marathon"}, client: client}
+
+	// when
+	err := h.RegisterIntoConsul(taskInfo)
+	opts := api.QueryOptions{}
+	services, _, err := client.Catalog().Services(&opts)
+
+	// then
+	require.NoError(t, err)
+	require.Len(t, h.serviceInstances, 2)
+	require.Contains(t, services, "consulName")
+	requireEqualElements(t, expectedService.tags, services["consulName"])
+	require.Contains(t, services, "consulName-secured")
+	requireEqualElements(t, expectedService2.tags, services["consulName-secured"])
+}
+
 func TestIfUsesPortLabelsForRegistration(t *testing.T) {
 	consulName := "consulName"
 	consulNameSecond := "consulName-secured"
