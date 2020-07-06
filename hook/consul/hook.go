@@ -102,26 +102,29 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 
 	var instancesToRegister []instance
 	for _, port := range ports {
-		portServiceName, err := getServiceLabel(port)
+		portServiceNames, err := getServiceLabels(port)
 		if err != nil {
 			log.Debugf("Pre-registration check for port failed: %s", err.Error())
 			continue
 		}
-		// consulServiceID is generated the same way as it is in marathon-consul - because
-		// it registers the service
-		// See: https://github.com/allegro/marathon-consul/blob/v1.1.0/consul/consul.go#L299-L301
-		consulServiceID := fmt.Sprintf("%s_%s_%d", taskID, portServiceName, port.GetNumber())
-		marathonTaskTag := fmt.Sprintf("marathon-task:%s", taskID)
-		portTags := mesosutils.GetLabelKeysByValue(port.GetLabels().GetLabels(), consulTagValue)
-		portTags = append(portTags, globalTags...)
-		portTags = append(portTags, marathonTaskTag)
-		log.Infof("Adding service ID %q to deregister before termination", consulServiceID)
-		instancesToRegister = append(instancesToRegister, instance{
-			consulServiceName: portServiceName,
-			consulServiceID:   consulServiceID,
-			port:              port.GetNumber(),
-			tags:              portTags,
-		})
+
+		for _, portServiceName := range portServiceNames {
+			// consulServiceID is generated the same way as it is in marathon-consul - because
+			// it registers the service
+			// See: https://github.com/allegro/marathon-consul/blob/v1.1.0/consul/consul.go#L299-L301
+			consulServiceID := fmt.Sprintf("%s_%s_%d", taskID, portServiceName, port.GetNumber())
+			marathonTaskTag := fmt.Sprintf("marathon-task:%s", taskID)
+			portTags := getPortTags(port, portServiceName)
+			portTags = append(portTags, globalTags...)
+			portTags = append(portTags, marathonTaskTag)
+			log.Infof("Adding service ID %q to deregister before termination", consulServiceID)
+			instancesToRegister = append(instancesToRegister, instance{
+				consulServiceName: portServiceName,
+				consulServiceID:   consulServiceID,
+				port:              port.GetNumber(),
+				tags:              portTags,
+			})
+		}
 	}
 
 	if len(instancesToRegister) == 0 {
@@ -159,6 +162,28 @@ func (h *Hook) RegisterIntoConsul(taskInfo mesosutils.TaskInfo) error {
 	}
 
 	return nil
+}
+
+func getPortTags(port mesos.Port, serviceName string) []string {
+	var keys []string
+	labels := port.GetLabels().GetLabels()
+
+	for _, label := range labels {
+		value := label.GetValue()
+		valueAndSelector := strings.Split(value, ":")
+		if len(valueAndSelector) > 1 {
+			value := valueAndSelector[0]
+			serviceSelector := valueAndSelector[1]
+
+			if value == consulTagValue && serviceSelector == serviceName {
+				keys = append(keys, label.GetKey())
+			}
+		} else if value == consulTagValue {
+			keys = append(keys, label.GetKey())
+		}
+	}
+
+	return keys
 }
 
 // DeregisterFromConsul will deregister service IDs from Consul that were created
@@ -220,12 +245,15 @@ func resolvePlaceholders(values []string, placeholders map[string]string) []stri
 	return resolved
 }
 
-func getServiceLabel(port mesos.Port) (string, error) {
+func getServiceLabels(port mesos.Port) ([]string, error) {
 	label := mesosutils.FindLabel(port.GetLabels().GetLabels(), consulNameLabelKey)
 	if label == nil {
-		return "", fmt.Errorf("port %d has no label %q", port.GetNumber(), consulNameLabelKey)
+		return nil, fmt.Errorf("port %d has no label %q", port.GetNumber(), consulNameLabelKey)
 	}
-	return label.GetValue(), nil
+
+	labels := strings.Split(label.GetValue(), ",")
+
+	return labels, nil
 }
 
 func marathonAppNameToServiceName(name mesosutils.TaskID) string {
