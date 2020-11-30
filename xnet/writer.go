@@ -128,7 +128,7 @@ type consulDiscoveryServiceClient struct {
 
 func (c *consulDiscoveryServiceClient) GetAddrsByName(serviceName string) ([]Address, error) {
 	//TODO(janisz): Add fallback to other datacenters with query
-	services, _, err := c.client.Catalog().Service(serviceName, "", nil)
+	services, _, err := c.client.Health().Service(serviceName, "", true, nil)
 
 	if err != nil {
 		return nil, fmt.Errorf("could NOT find service in Consul: %s", err)
@@ -136,7 +136,7 @@ func (c *consulDiscoveryServiceClient) GetAddrsByName(serviceName string) ([]Add
 
 	instances := make([]Address, len(services))
 	for i, instance := range services {
-		instances[i] = Address(net.JoinHostPort(instance.ServiceAddress, strconv.Itoa(instance.ServicePort)))
+		instances[i] = Address(net.JoinHostPort(instance.Service.Address, strconv.Itoa(instance.Service.Port)))
 	}
 
 	return instances, nil

@@ -244,6 +244,29 @@ func TestIfGetAddrsByNameReturnsErrorIfNoConsulConnection(t *testing.T) {
 	assert.Empty(t, addr)
 }
 
+func TestIfGetAddrsByNameReturnsOnlyHealthyInstancesFromConsul(t *testing.T) {
+	config, server := createTestConsulServer(t)
+	consulApiClient, err := api.NewClient(config)
+	defer stopConsul(server)
+
+	require.NoError(t, err)
+
+	agent := consulApiClient.Agent()
+	// given
+	for id, name := range []string{"A", "A"} {
+		err = agent.ServiceRegister(registration(id, name))
+		require.NoError(t, err)
+	}
+	// when
+	server.AddCheck(t, "check", "0", "critical")
+
+	client := consulDiscoveryServiceClient{client: consulApiClient}
+	// then
+	addr, err := client.GetAddrsByName("A")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(addr))
+}
+
 func registration(id int, name string) *api.AgentServiceRegistration {
 	return &api.AgentServiceRegistration{
 		ID:                fmt.Sprint(id),
