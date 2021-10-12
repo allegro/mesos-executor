@@ -128,7 +128,8 @@ type consulDiscoveryServiceClient struct {
 
 func (c *consulDiscoveryServiceClient) GetAddrsByName(serviceName string) ([]Address, error) {
 	//TODO(janisz): Add fallback to other datacenters with query
-	services, _, err := c.client.Health().Service(serviceName, "", true, nil)
+	opts := api.QueryOptions{AllowStale: true, UseCache: true, MaxAge: 5 * time.Minute}
+	services, _, err := c.client.Health().Service(serviceName, "", true, &opts)
 
 	if err != nil {
 		return nil, fmt.Errorf("could NOT find service in Consul: %s", err)

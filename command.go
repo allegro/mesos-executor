@@ -11,13 +11,13 @@ import (
 	"syscall"
 	"time"
 
+	mesos "github.com/mesos/mesos-go/api/v1/lib"
 	log "github.com/sirupsen/logrus"
 
 	osutil "github.com/allegro/mesos-executor/os"
 	"github.com/allegro/mesos-executor/servicelog"
 	"github.com/allegro/mesos-executor/servicelog/appender"
 	"github.com/allegro/mesos-executor/servicelog/scraper"
-	"github.com/mesos/mesos-go/api/v1/lib"
 )
 
 // TaskExitState is a type describing reason of program execution interuption.

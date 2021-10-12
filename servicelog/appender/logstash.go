@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/consul/api"
-	"github.com/json-iterator/go"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rcrowley/go-metrics"
 	log "github.com/sirupsen/logrus"

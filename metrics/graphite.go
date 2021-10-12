@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/allegro/go-metrics-graphite"
+	graphite "github.com/allegro/go-metrics-graphite"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rcrowley/go-metrics"
 	log "github.com/sirupsen/logrus"

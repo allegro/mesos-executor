@@ -10,7 +10,7 @@ import (
 	"github.com/mesos/mesos-go/api/v1/lib/executor/config"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/allegro/mesos-executor"
+	executor "github.com/allegro/mesos-executor"
 	"github.com/allegro/mesos-executor/hook"
 	"github.com/allegro/mesos-executor/hook/consul"
 	"github.com/allegro/mesos-executor/hook/vaas"

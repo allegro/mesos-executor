@@ -1,0 +1,26 @@
+name: golangci
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+jobs:
+  golangci:
+    name: lint test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.15.x
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.30
+          args: --config=golangcilinter.yaml
+      - name: Build and test project
+        run: make test
+      - uses: codecov/codecov-action@v2
