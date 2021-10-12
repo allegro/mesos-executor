@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/consul/api"
-	"github.com/hashicorp/consul/testutil"
+	"github.com/hashicorp/consul/sdk/testutil"
 	mesos "github.com/mesos/mesos-go/api/v1/lib"
 	"github.com/stretchr/testify/require"
 

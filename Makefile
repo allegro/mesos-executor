@@ -3,7 +3,6 @@ APPLICATION_VERSION := $(shell git describe --tags || echo "unknown")
 
 LDFLAGS := -X main.Version=$(APPLICATION_VERSION)
 
-BUILD_FOLDER := target
 GO_BUILD := go build -v -ldflags "$(LDFLAGS)" -a
 
 CURRENT_DIR = $(shell pwd)
@@ -14,15 +13,15 @@ PATH := $(CURRENT_DIR)/bin:$(PATH)
 
 all: lint test build
 
-build: $(BUILD_FOLDER)
-	$(GO_BUILD) -o $(BUILD_FOLDER)/executor ./cmd/executor
+build: target
+	$(GO_BUILD) -o target/executor ./cmd/executor
 
-$(BUILD_FOLDER):
-	mkdir $(BUILD_FOLDER)
+target:
+	mkdir target
 
 clean:
 	go clean -v .
-	rm -rf $(BUILD_FOLDER)
+	rm -rf target
 	rm -rf $(CURRENT_DIR)/bin
 
 generate-source: generate-source-deps
@@ -32,18 +31,18 @@ generate-source-deps:
 	go get -v -u golang.org/x/tools/cmd/stringer
 
 lint: lint-deps
-	gometalinter.v2 --config=gometalinter.json ./...
+	golangci-lint run --config=golangcilinter.yaml ./...
 
 lint-deps:
-	@which gometalinter.v2 > /dev/null || \
-		(go get -u -v gopkg.in/alecthomas/gometalinter.v2 && gometalinter.v2 --install)
+	@which golangci-lint > /dev/null || \
+		(GO111MODULE=on go get -v github.com/golangci/golangci-lint/cmd/golangci-lint@v1.25.1)
 
-package: $(BUILD_FOLDER)/executor
-	zip -j $(BUILD_FOLDER)/executor-$(APPLICATION_VERSION)-linux-amd64.zip $(BUILD_FOLDER)/executor
-	chmod 0755 $(BUILD_FOLDER)/executor-$(APPLICATION_VERSION)-linux-amd64.zip
+package: target/executor
+	zip -j target/executor-$(APPLICATION_VERSION)-linux-amd64.zip target/executor
+	chmod 0755 target/executor-$(APPLICATION_VERSION)-linux-amd64.zip
 
 test: test-deps
-	go test -coverprofile=$(BUILD_FOLDER)/coverage.txt -covermode=atomic ./...
+	go test -coverprofile=target/coverage.txt -covermode=atomic ./...
 
-test-deps: $(BUILD_FOLDER)
+test-deps: target
 	./scripts/install-consul.sh

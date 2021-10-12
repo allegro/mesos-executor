@@ -1,6 +1,5 @@
 # Mesos Executor 
 
-[![Build Status](https://travis-ci.org/allegro/mesos-executor.svg?branch=master)](https://travis-ci.org/allegro/mesos-executor)
 [![Go Report Card](https://goreportcard.com/badge/github.com/allegro/mesos-executor)](https://goreportcard.com/report/github.com/allegro/mesos-executor)
 [![Codecov](https://codecov.io/gh/allegro/mesos-executor/branch/master/graph/badge.svg)](https://codecov.io/gh/allegro/mesos-executor)
 [![GoDoc](https://godoc.org/github.com/allegro/mesos-executor?status.svg)](https://godoc.org/github.com/allegro/mesos-executor)
@@ -102,7 +101,7 @@ as a canary.
 
 To run executor tests locally you need following tools installed:
 
-* [Go 1.9+][6]
+* [Go 1.14+][6]
 * [Make][7]
 * Linux or Docker
 
