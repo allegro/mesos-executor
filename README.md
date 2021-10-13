@@ -1,5 +1,6 @@
 # Mesos Executor 
 
+[![Build Status](https://github.com/allegro/mesos-executor/actions/workflows/golangci.yaml/badge.svg)](https://github.com/allegro/mesos-executor/actions/workflows/golangci.yaml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/allegro/mesos-executor)](https://goreportcard.com/report/github.com/allegro/mesos-executor)
 [![Codecov](https://codecov.io/gh/allegro/mesos-executor/branch/master/graph/badge.svg)](https://codecov.io/gh/allegro/mesos-executor)
 [![GoDoc](https://godoc.org/github.com/allegro/mesos-executor?status.svg)](https://godoc.org/github.com/allegro/mesos-executor)
