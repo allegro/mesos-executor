@@ -24,7 +24,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20161128210544-1f30fe9094a5
 	github.com/shirou/gopsutil v2.16.13-0.20170803020835-114c78c777eb+incompatible
 	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
-	github.com/sirupsen/logrus v1.4.2
-	github.com/stretchr/testify v1.4.0
+	github.com/sirupsen/logrus v1.8.3
+	github.com/stretchr/testify v1.7.0
 	golang.org/x/time v0.0.0-20170927054726-6dc17368e09b
 )
